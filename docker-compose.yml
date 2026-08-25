@@ -1,0 +1,76 @@
+services:
+
+  postgres:
+    image: postgres:17
+    container_name: mercado-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: mercado_libre
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mercado-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: mercado-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - mercado-network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: mercado-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres123
+      DB_NAME: mercado_libre
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+    networks:
+      - mercado-network
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: mercado-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - mercado-network
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  mercado-network:
+    driver: bridge
