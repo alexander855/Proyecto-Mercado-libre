@@ -1,0 +1,477 @@
+openapi: 3.0.3
+
+info:
+  title: API Mercado Libre
+  description: >
+    API backend para el proyecto Mercado Libre.
+    Permite gestionar usuarios, proveedores, categorías y productos.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Servidor local
+
+paths:
+
+  /api/usuarios:
+    get:
+      summary: Listar usuarios
+      tags:
+        - Usuarios
+      responses:
+        "200":
+          description: Lista de usuarios obtenida correctamente
+        "500":
+          description: Error al obtener usuarios
+
+    post:
+      summary: Crear usuario
+      tags:
+        - Usuarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioEntrada"
+      responses:
+        "201":
+          description: Usuario creado correctamente
+        "500":
+          description: Error al crear usuario
+
+  /api/usuarios/{id}:
+    get:
+      summary: Obtener usuario por ID
+      tags:
+        - Usuarios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Usuario encontrado
+        "404":
+          description: Usuario no encontrado
+        "500":
+          description: Error al obtener usuario
+
+    put:
+      summary: Actualizar usuario
+      tags:
+        - Usuarios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioEntrada"
+      responses:
+        "200":
+          description: Usuario actualizado correctamente
+        "404":
+          description: Usuario no encontrado
+        "500":
+          description: Error al actualizar usuario
+
+    delete:
+      summary: Eliminar usuario
+      tags:
+        - Usuarios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Usuario eliminado correctamente
+        "404":
+          description: Usuario no encontrado
+        "500":
+          description: Error al eliminar usuario
+
+
+  /api/proveedores:
+    get:
+      summary: Listar proveedores
+      tags:
+        - Proveedores
+      responses:
+        "200":
+          description: Lista de proveedores obtenida correctamente
+        "500":
+          description: Error al obtener proveedores
+
+    post:
+      summary: Crear proveedor
+      tags:
+        - Proveedores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProveedorEntrada"
+      responses:
+        "201":
+          description: Proveedor creado correctamente
+        "500":
+          description: Error al crear proveedor
+
+  /api/proveedores/{id}:
+    get:
+      summary: Obtener proveedor por ID
+      tags:
+        - Proveedores
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Proveedor encontrado
+        "404":
+          description: Proveedor no encontrado
+        "500":
+          description: Error al obtener proveedor
+
+    put:
+      summary: Actualizar proveedor
+      tags:
+        - Proveedores
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProveedorEntrada"
+      responses:
+        "200":
+          description: Proveedor actualizado correctamente
+        "404":
+          description: Proveedor no encontrado
+        "500":
+          description: Error al actualizar proveedor
+
+    delete:
+      summary: Eliminar proveedor
+      tags:
+        - Proveedores
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Proveedor eliminado correctamente
+        "404":
+          description: Proveedor no encontrado
+        "500":
+          description: Error al eliminar proveedor
+
+
+  /api/categorias:
+    get:
+      summary: Listar categorías
+      tags:
+        - Categorias
+      responses:
+        "200":
+          description: Lista de categorías obtenida correctamente
+        "500":
+          description: Error al obtener categorías
+
+    post:
+      summary: Crear categoría
+      tags:
+        - Categorias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaEntrada"
+      responses:
+        "201":
+          description: Categoría creada correctamente
+        "500":
+          description: Error al crear categoría
+
+  /api/categorias/{id}:
+    get:
+      summary: Obtener categoría por ID
+      tags:
+        - Categorias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Categoría encontrada
+        "404":
+          description: Categoría no encontrada
+        "500":
+          description: Error al obtener categoría
+
+    put:
+      summary: Actualizar categoría
+      tags:
+        - Categorias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaEntrada"
+      responses:
+        "200":
+          description: Categoría actualizada correctamente
+        "404":
+          description: Categoría no encontrada
+        "500":
+          description: Error al actualizar categoría
+
+    delete:
+      summary: Eliminar categoría
+      tags:
+        - Categorias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Categoría eliminada correctamente
+        "404":
+          description: Categoría no encontrada
+        "500":
+          description: Error al eliminar categoría
+
+
+  /api/productos:
+    get:
+      summary: Listar productos
+      tags:
+        - Productos
+      responses:
+        "200":
+          description: Lista de productos obtenida correctamente
+        "500":
+          description: Error al obtener productos
+
+    post:
+      summary: Crear producto
+      tags:
+        - Productos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductoEntrada"
+      responses:
+        "201":
+          description: Producto creado correctamente
+        "500":
+          description: Error al crear producto
+
+  /api/productos/{id}:
+    get:
+      summary: Obtener producto por ID
+      tags:
+        - Productos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Producto encontrado
+        "404":
+          description: Producto no encontrado
+        "500":
+          description: Error al obtener producto
+
+    put:
+      summary: Actualizar producto
+      tags:
+        - Productos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductoEntrada"
+      responses:
+        "200":
+          description: Producto actualizado correctamente
+        "404":
+          description: Producto no encontrado
+        "500":
+          description: Error al actualizar producto
+
+    delete:
+      summary: Eliminar producto
+      tags:
+        - Productos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Producto eliminado correctamente
+        "404":
+          description: Producto no encontrado
+        "500":
+          description: Error al eliminar producto
+
+
+components:
+  schemas:
+
+    UsuarioEntrada:
+      type: object
+      required:
+        - email
+        - password
+        - rol
+      properties:
+        nombre:
+          type: string
+          example: Carlos
+        apellido:
+          type: string
+          example: Mendoza
+        email:
+          type: string
+          format: email
+          example: carlos@gmail.com
+        password:
+          type: string
+          example: "123456"
+        telefono:
+          type: string
+          example: "71234567"
+        rol:
+          type: string
+          example: cliente
+        estado:
+          type: string
+          example: activo
+
+    ProveedorEntrada:
+      type: object
+      required:
+        - nombre
+      properties:
+        nombre:
+          type: string
+          example: Distribuidora Bolivia
+        telefono:
+          type: string
+          example: "71234567"
+        email:
+          type: string
+          format: email
+          example: ventas@distribuidora.com
+        direccion:
+          type: string
+          example: Santa Cruz
+        estado:
+          type: string
+          example: activo
+
+    CategoriaEntrada:
+      type: object
+      required:
+        - nombre
+      properties:
+        nombre:
+          type: string
+          example: Tecnologia
+        descripcion:
+          type: string
+          example: Productos electronicos y tecnologicos
+        estado:
+          type: string
+          example: activo
+
+    ProductoEntrada:
+      type: object
+      required:
+        - id_proveedor
+        - id_categoria
+        - nombre
+        - precio
+        - stock
+      properties:
+        id_proveedor:
+          type: integer
+          example: 1
+        id_categoria:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: Mouse Gamer
+        descripcion:
+          type: string
+          example: Mouse gamer RGB
+        precio:
+          type: number
+          format: double
+          minimum: 0
+          example: 150.00
+        stock:
+          type: integer
+          minimum: 0
+          example: 20
+        imagen:
+          type: string
+          example: mouse.jpg
+        estado:
+          type: string
+          example: activo
