@@ -1,1 +1,4 @@
 .sql
+.env
+node_modules/
+data/

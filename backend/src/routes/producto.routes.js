@@ -1,15 +1,30 @@
-//aqui es dnd se hace el crud
-
 const express = require("express");
 const router = express.Router();
-
 const pool = require("../db");
+const { productoValidators } = require ("../../validators/validators");
+const validar = require ("../../middleware/validar");
+
+
 
 //get crud listar todo los productos
 router.get("/", async (req, res)  => {
     try {
         const resultado = await pool.query(
-            "SELECT * FROM producto ORDEN BY id_producto"
+            `SELECT 
+                p.id_producto,
+                pr.nombre AS proveedor,
+                c.nombre AS categoria,
+                p.nombre AS nombre,
+                p.descripcion,
+                p.precio,
+                p.stock,
+                p.imagen,
+                p.estado,
+                p.fecha_publicacion
+            FROM producto p
+            INNER JOIN categoria c ON p.id_categoria = c.id_categoria
+            INNER JOIN proveedor pr ON p.id_proveedor = pr.id_proveedor
+            ORDER BY p.id_producto`
         );
         res.json(resultado.rows);
     } catch (error) {
@@ -23,7 +38,7 @@ router.get("/", async (req, res)  => {
 });
 
 //get obtener un producto x id
-router.get("/:id", async (req, res) => {
+router.get("/:id", productoValidators.id, validar, async (req, res) => {
     try{
         const { id } = req.params;
         const  resultado = await pool.query(
@@ -49,7 +64,7 @@ router.get("/:id", async (req, res) => {
 });
 
 //Post crear producto
-router.post("/", async (req, res) => {
+router.post("/", productoValidators.create, validar, async (req, res) => {
     try{
         const {
             id_proveedor,
@@ -102,7 +117,7 @@ router.post("/", async (req, res) => {
 });
 
 //PUT actualizar producto
-router.put("/:id", async (req, res) => {
+router.put("/:id", productoValidators.update, validar, async (req, res) => {
     try {
         const { id } = req.params;
         const {
@@ -161,12 +176,16 @@ router.put("/:id", async (req, res) => {
 
 //eliminar producto
 
-router. delete("/:id", async (req, res) => {
+router. delete("/:id", productoValidators.id, validar, async (req, res) => {
     try{
         const { id } = req.params;
 
+        console.log("=== ELIMINAR PRODUCTO ===");
+        console.log("ID recibido:", id);
+        console.log("Tipo de ID:", typeof id);
+
         const resultado = await pool.query(
-            "DELETE FROM producto WHERE id_producto = $1 RETURNING",
+            "DELETE FROM producto WHERE id_producto = $1 returning*",
             [id]
         );
 

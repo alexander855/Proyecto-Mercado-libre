@@ -1,0 +1,115 @@
+/* CONTENEDOR DE CATEGORÍAS */
+
+.categoria {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* TÍTULO */
+
+.categoria h1 {
+  color: #123c69;
+  margin-bottom: 25px;
+  font-size: 26px;
+}
+
+/* FORMULARIO */
+
+.categoria form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* GRUPOS */
+
+.categoria form div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* ETIQUETAS */
+
+.categoria label {
+  color: #123c69;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+/* INPUT Y TEXTAREA */
+
+.categoria input,
+.categoria textarea,
+.categoria select {
+  width: 100%;
+  padding: 12px 14px;
+
+  border: 1px solid #ccd6e0;
+  border-radius: 7px;
+
+  font-size: 15px;
+  font-family: Arial, Helvetica, sans-serif;
+
+  outline: none;
+  transition: 0.2s;
+}
+
+/* TEXTAREA */
+
+.categoria textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* CUANDO SE SELECCIONA UN CAMPO */
+
+.categoria input:focus,
+.categoria textarea:focus,
+.categoria select:focus {
+  border-color: #2b7bbb;
+  box-shadow: 0 0 0 2px rgba(43, 123, 187, 0.12);
+}
+
+/* BOTÓN */
+
+.categoria button {
+  background: #2b7bbb;
+  color: white;
+
+  border: none;
+  border-radius: 7px;
+
+  padding: 13px 20px;
+
+  font-size: 15px;
+  font-weight: bold;
+
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+/* HOVER */
+
+.categoria button:hover {
+  background: #123c69;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 768px) {
+
+  .categoria {
+    padding: 20px;
+    margin: 0;
+  }
+
+  .categoria h1 {
+    font-size: 22px;
+  }
+
+}

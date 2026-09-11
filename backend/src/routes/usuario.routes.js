@@ -1,186 +1,190 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const pool = require('../db');
+const { authenticate, authorizeRole } = require('../../middleware/auth');
+const { usuarioValidators } = require('../../validators/validators');
+const validar = require('../../middleware/validar');
 
-const pool = require("../db");
+// Todas las rutas requieren autenticación
+router.use(authenticate);
 
-//get para listar los usuarios
 
-router.get("/", async (req, res) => {
-    try{
+// GET - Listar todos los usuarios (solo admin)
+
+router.get('/', authorizeRole('admin'), async (req, res) => {
+    try {
         const resultado = await pool.query(
-            "SELECT * FROM usuario ORDER BY id_usuario"
+            `SELECT id_usuario, nombre, apellido, email, telefono, rol, estado, fecha_registro
+             FROM usuario ORDER BY id_usuario`
         );
-
         res.json(resultado.rows);
-
     } catch (error) {
         console.error(error);
-
-        res.status(500).json({
-            mensaje: "Error al obtener usuarios"
-        });
+        res.status(500).json({ mensaje: 'Error al obtener usuarios' });
     }
 });
 
-//get - obetener un usuario x id
-router.get("/:id", async ( req, res) => {
-    try{
-        const { id } = req.params;
 
-        const resultado = await pool.query(
-            "SELECT * FROM usuario WHERE id_usuario = $1",
-            [id]
-        );
+// GET - Obtener un usuario por ID
 
-        if (resultado.rows.length === 0) {
-            return res.status(404).json({
-                mensaje: "usuario no encontrado"
+router.get('/:id',usuarioValidators.id,validar,async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            
+            if (req.user.id_usuario !== parseInt(id) && req.user.rol !== 'admin') {
+                return res.status(403).json({
+                    mensaje: 'No tienes permisos para ver este usuario'
+                });
+            }
+
+            const resultado = await pool.query(
+                `SELECT 
+                id_usuario, 
+                nombre, 
+                apellido, 
+                email, 
+                telefono, 
+                rol, 
+                estado, 
+                fecha_registro
+                 FROM usuario WHERE id_usuario = $1`,
+                [id]
+            );
+
+            if (resultado.rows.length === 0) {
+                return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+            }
+
+            res.json(resultado.rows[0]);
+
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ mensaje: 'Error al obtener usuario' });
+        }
+    }
+);
+
+
+// PUT - Actualizar usuario
+
+router.put('/:id', usuarioValidators.update, validar, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { nombre, apellido, email, telefono, rol, estado } = req.body;
+
+            
+            if (req.user.id_usuario !== parseInt(id) && req.user.rol !== 'admin') {
+                return res.status(403).json({
+                    mensaje: 'No tienes permisos para actualizar este usuario'
+                });
+            }
+
+            
+            if ((rol || estado) && req.user.rol !== 'admin') {
+                return res.status(403).json({
+                    mensaje: 'Solo un administrador puede cambiar el rol o estado'
+                });
+            }
+
+            
+            if (email) {
+                const emailEnUso = await pool.query(
+                    'SELECT id_usuario FROM usuario WHERE email = $1 AND id_usuario != $2',
+                    [email, id]
+                );
+
+                if (emailEnUso.rows.length > 0) {
+                    return res.status(409).json({
+                        mensaje: 'Este email ya está registrado por otro usuario'
+                    });
+                }
+            }
+
+            const resultado = await pool.query(
+                `UPDATE usuario
+                 SET
+                    nombre = COALESCE($1, nombre),
+                    apellido = COALESCE($2, apellido),
+                    email = COALESCE($3, email),
+                    telefono = COALESCE($4, telefono),
+                    rol = COALESCE($5, rol),
+                    estado = COALESCE($6, estado)
+                 WHERE id_usuario = $7
+                 RETURNING id_usuario, nombre, apellido, email, telefono, rol, estado, fecha_registro`,
+                [nombre, apellido, email, telefono, rol, estado, id]
+            );
+
+            if (resultado.rows.length === 0) {
+                return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+            }
+
+            res.json({
+                mensaje: 'Usuario actualizado exitosamente',
+                usuario: resultado.rows[0]
             });
 
+        } catch (error) {
+            console.error(error);
+
+            if (error.code === '23505') {
+                return res.status(409).json({
+                    mensaje: 'Este email ya está registrado'
+                });
+            }
+
+            res.status(500).json({ mensaje: 'Error al actualizar usuario' });
         }
-        res.json (resultado.rows[0]);
-
-    } catch (error){
-        console.error(error);
-
-        res.status(500).json({
-            mensaje: "Error al obtener el usuario"
-        });
     }
-});
+);
 
-// post - crear nuevo usuario
-router.post("/", async (req, res) => {
-    try {
 
-        const {
-            nombre,
-            apellido,
-            email,
-            password,
-            telefono,
-            rol,
-            estado
-        } = req.body;
+// DELETE - Eliminar usuario (solo admin)
 
-        const resultado = await pool.query(
-            `INSERT INTO usuario
-            (
-                nombre,
-                apellido,
-                email,
-                password,
-                telefono,
-                rol,
-                estado,
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *`,
-            [
-                nombre,
-                apellido,
-                email,
-                password,
-                telefono,
-                rol,
-                estado
-            ]
-        );
+router.delete(
+    '/:id',
+    authorizeRole('admin'),
+    usuarioValidators.id,
+    validar,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
 
-        res.status(201).json(resultado.rows[0]);
+            
+            if (req.user.id_usuario === parseInt(id)) {
+                return res.status(400).json({
+                    mensaje: 'No puedes eliminar tu propia cuenta'
+                });
+            }
 
-    } catch (error) {
-        console.error(error);
+            const resultado = await pool.query(
+                `DELETE FROM usuario WHERE id_usuario = $1 
+                 RETURNING id_usuario, nombre, apellido, email, rol`,
+                [id]
+            );
 
-        res.status(500).json({
-            mensaje: "Error al crear el usuario"
-        });
-    }
-});
+            if (resultado.rows.length === 0) {
+                return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+            }
 
-// PUT - actualizar usuario
-router.put("/:id", async (req, res) => {
-    try {
-
-        const { id } = req.params;
-
-        const {
-            nombre,
-            apellido,
-            email,
-            password,
-            telefono,
-            rol,
-            estado
-        } = req.body;
-
-        const resultado = await pool.query(
-            `UPDATE usuario
-            SET
-                nombre = $1,
-                apellido = $2,
-                email = $3,
-                password = $4,
-                telefono = $5,
-                rol = $6,
-                estado = $7
-            WHERE id_usuario = $8
-            RETURNING *`,
-            [
-                nombre,
-                apellido,
-                email,
-                password,
-                telefono,
-                rol,
-                estado,
-                id
-            ]
-        );
-
-        if (resultado.rows.length === 0) {
-            return res.status(404).json({
-                mensaje: "Usuario no encontrado"
+            res.json({
+                mensaje: 'Usuario eliminado correctamente',
+                usuario: resultado.rows[0]
             });
+
+        } catch (error) {
+            console.error(error);
+
+            if (error.code === '23503') {
+                return res.status(409).json({
+                    mensaje: 'No se puede eliminar porque tiene registros asociados'
+                });
+            }
+
+            res.status(500).json({ mensaje: 'Error al eliminar usuario' });
         }
-
-        res.json(resultado.rows[0]);
-
-    } catch (error) {
-        console.error(error);
-
-        res.status(500).json({
-            mensaje: "Error al actualizar usuario"
-        });
     }
-});
-
-//borrar al proveedor
-
-router.delete("/:id", async (req, res) => {
-    try{
-        const { id } = req.params;
-        const resultado = await pool.query(
-            "DELETE FROM usuario WHERE id_usuario = $1 returning*",
-            [id]
-        );
-        if (resultado.rows.length ===0 ){
-            return res.status(404).json({
-                mensaje: "Usuario no encontrado"
-            });
-        }
-        res.json({
-            mensaje: "Usuario eliminado correctamente",
-            proveedor: resultado.rows[0]
-        });
-
-    }catch (error){
-        console.error(error);
-
-        res.status(500).json({
-            mensaje: "Error al eliminar al Usuario"
-        });
-    }
-});
+);
 
 module.exports = router;

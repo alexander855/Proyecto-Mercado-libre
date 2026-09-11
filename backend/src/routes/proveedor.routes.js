@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-
 const pool = require("../db");
+const  { proveedorValidators } = require ("../../validators/validators");
+const validar = require ("../../middleware/validar");
 
 //get para listar los proveedores
 
@@ -23,7 +24,7 @@ router.get("/", async (req, res) => {
 });
 
 //get - obetener un proveedor x id
-router.get("/:id", async ( req, res) => {
+router.get("/:id", proveedorValidators.id, validar, async ( req, res) => {
     try{
         const { id } = req.params;
 
@@ -50,7 +51,7 @@ router.get("/:id", async ( req, res) => {
 });
 
 //post crear nuevo proveedor
-router.post("/", async (req, res) =>{
+router.post("/", proveedorValidators.create, validar, async (req, res) =>{
     try{
 
         const {
@@ -82,7 +83,22 @@ router.post("/", async (req, res) =>{
                 estado
             ]
         );
-        res.status(201).json(resultado.rows[0]);
+        res.status(201).json({
+                mensaje: "Proveedor creado exitosamente",
+                proveedor: resultado.rows[0]
+            });
+
+        const emailExistente = await pool.query(
+                "SELECT * FROM proveedor WHERE email = $1",
+                [email]
+            );
+
+            if (emailExistente.rows.length > 0) {
+                return res.status(409).json({
+                    mensaje: "Este email ya está registrado"
+                });
+            }
+        
 
     } catch (error){
         console.error(error);
@@ -96,7 +112,7 @@ router.post("/", async (req, res) =>{
 
 
 //put - actualizar proveedor
-router.put("/:id", async (req, res) =>{
+router.put("/:id", proveedorValidators.update, validar, async (req, res) =>{
     try{
         const { id } = req.params;
         const {
@@ -145,7 +161,7 @@ router.put("/:id", async (req, res) =>{
 
 //borrar al proveedor
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", proveedorValidators.id, validar, async (req, res) => {
     try{
         const { id } = req.params;
         const resultado = await pool.query(
@@ -165,6 +181,11 @@ router.delete("/:id", async (req, res) => {
     }catch (error){
         console.error(error);
 
+        if (error.code === '23503') {
+                return res.status(409).json({
+                    mensaje: "No se puede eliminar el proveedor porque tiene productos asociados"
+                });
+            }
         res.status(500).json({
             mensaje: "Error al eliminar al proveedor"
         });

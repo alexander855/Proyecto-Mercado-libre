@@ -1,0 +1,169 @@
+* {
+  box-sizing: border-box;
+}
+
+/* Fondo simple */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f0f0f0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+/* Tarjeta simple */
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 30px;
+}
+
+/* ====== Header ====== */
+.login-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-logo {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.login-header h1 {
+  font-size: 22px;
+  color: #333;
+  margin: 0 0 5px 0;
+}
+
+.login-header p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ====== Formulario ====== */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 10px 10px 10px 35px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.input-wrapper input:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+/* Botón para ver/ocultar contraseña */
+.btn-toggle-password {
+  position: absolute;
+  right: 5px;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* ====== Errores ====== */
+.error-campo {
+  color: red;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.error-general {
+  background: #ffe6e6;
+  color: #cc0000;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ====== Botón de login ====== */
+.btn-login {
+  padding: 10px;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+.btn-login:hover:not(:disabled) {
+  background: #357ab8;
+}
+
+.btn-login:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* ====== Footer ====== */
+.login-footer {
+  margin-top: 20px;
+  text-align: center;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.login-footer p {
+  color: #666;
+  font-size: 13px;
+  margin: 0;
+}
+
+.login-footer a {
+  color: #4a90e2;
+  text-decoration: none;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 20px;
+  }
+}
