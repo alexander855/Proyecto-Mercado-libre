@@ -30,7 +30,7 @@ class ProductoRepository extends BaseRepository {
     async create(datos) {
         const {
             id_proveedor, id_categoria, nombre, descripcion,
-            precio, stock, imagen, estado
+            precio, stock, imagen, estado = 'disponible'
         } = datos;
 
         const filas = await this.query(
@@ -51,14 +51,14 @@ class ProductoRepository extends BaseRepository {
 
         const filas = await this.query(
             `UPDATE producto
-             SET id_proveedor = $1,
-                 id_categoria = $2,
-                 nombre = $3,
-                 descripcion = $4,
-                 precio = $5,
-                 stock = $6,
-                 imagen = $7,
-                 estado = $8
+             SET id_proveedor = COALESCE($1, id_proveedor),
+                 id_categoria = COALESCE($2, id_categoria),
+                 nombre = COALESCE($3, nombre),
+                 descripcion = COALESCE($4, descripcion),
+                 precio = COALESCE($5, precio),
+                 stock = COALESCE($6, stock),
+                 imagen = COALESCE($7, imagen),
+                 estado = COALESCE($8, estado)
              WHERE id_producto = $9
              RETURNING *`,
             [id_proveedor, id_categoria, nombre, descripcion, precio, stock, imagen, estado, id]

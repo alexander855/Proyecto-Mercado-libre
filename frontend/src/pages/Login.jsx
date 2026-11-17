@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../css/Login.css";
 import toast from "react-hot-toast";
+import { API_URL } from "../api";
 
 function Login() {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ function Login() {
     try {
       console.log("📤 Enviando login:", formulario.email);
 
-      const respuesta = await fetch("http://localhost:3000/api/auth/login", {
+      const respuesta = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formulario)
@@ -60,7 +61,7 @@ function Login() {
             erroresMap[err.campo] = err.mensaje;
           });
           setErrores(erroresMap);
-          toast.error("Profavor corrija los errores");
+          toast.error("Por favor corrige los errores");
           setCargando(false);
           return;
         }
@@ -154,7 +155,7 @@ function Login() {
 
         <div className="login-footer">
           <p>
-            ¿No tienes cuenta? <Link to="/Register">Regístrate aquí</Link>
+            ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
           </p>
         </div>
       </div>

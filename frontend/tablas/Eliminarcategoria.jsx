@@ -1,7 +1,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "../css/EliminarCategoria.css"
+import "../css/Eliminarcategoria.css";
+import { API_URL, authHeaders } from "../src/api";
 
 function Eliminarcategoria() {
   const { id } = useParams();
@@ -11,7 +12,7 @@ function Eliminarcategoria() {
 
   useEffect(() => {
     // Obtener datos de la categoría
-    fetch(`http://localhost:3000/api/categorias/${id}`)
+    fetch(`${API_URL}/api/categorias/${id}`)
       .then((res) => res.json())
       .then((data) => {
         setCategoria(data);
@@ -25,8 +26,9 @@ function Eliminarcategoria() {
 
   const eliminarCategoria = async () => {
     try {
-      const respuesta = await fetch(`http://localhost:3000/api/categorias/${id}`, {
-        method: "DELETE"
+      const respuesta = await fetch(`${API_URL}/api/categorias/${id}`, {
+        method: "DELETE",
+        headers: authHeaders()
       });
 
       if (!respuesta.ok) {

@@ -2,30 +2,213 @@ openapi: 3.0.3
 
 info:
   title: API Mercado Libre
-  description: >
-    API backend para el proyecto Mercado Libre.
-    Permite gestionar usuarios, proveedores, categorías y productos.
-  version: 1.0.0
+  description: |
+    API backend para el proyecto Mercado Libre. Permite gestionar usuarios,
+    proveedores, categorías, productos, direcciones, carritos, pedidos y pagos.
+
+    ## Autenticación
+    La mayoría de las operaciones requieren un token JWT enviado en la cabecera:
+
+    ```http
+    Authorization: Bearer <token>
+    ```
+
+    Los tokens se obtienen en `POST /api/auth/login` o `POST /api/auth/register`
+    y expiran a los 7 días. El registro público siempre crea usuarios con rol
+    `cliente`; cualquier `rol` enviado en ese cuerpo se ignora.
+
+    ## Roles y permisos
+    | Recurso | Lectura | Crear / actualizar | Eliminar |
+    |---|---|---|---|
+    | Productos, proveedores, categorías | Público | `admin`, `vendedor` | `admin` |
+    | Usuarios | Dueño o `admin` | Dueño o `admin` (solo `admin` cambia `rol`/`estado`) | `admin` (no puede eliminarse a sí mismo) |
+    | Listado y alta de usuarios | `admin` | `admin` | `admin` |
+
+    ## Actualizaciones parciales
+    Los `PUT` de productos, proveedores, categorías y usuarios aceptan solo los
+    campos a modificar; el resto conserva su valor actual.
+  version: 1.2.0
 
 servers:
   - url: http://localhost:3000
     description: Servidor local
 
+tags:
+  - name: Auth
+    description: Registro, login y sesión
+  - name: Usuarios
+  - name: Proveedores
+  - name: Categorias
+  - name: Productos
+  - name: Direcciones
+  - name: Carritos
+  - name: Pedidos
+  - name: PedidosProveedor
+    description: Pedidos agrupados por proveedor
+  - name: Pagos
+
+security:
+  - bearerAuth: []
+
 paths:
+
+  /:
+    get:
+      summary: Verificar que la API responde
+      tags:
+        - Auth
+      security: []
+      responses:
+        "200":
+          description: API funcionando
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: API Mercado Libre funcionando aqui
+
+  /api/auth/register:
+    post:
+      summary: Registrar un cliente
+      description: >
+        Crea un usuario con rol `cliente` y devuelve un token. Si el cuerpo
+        incluye `rol`, se ignora: los roles privilegiados solo se asignan con
+        `POST /api/usuarios` usando un token de administrador.
+      tags:
+        - Auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Usuario registrado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/auth/login:
+    post:
+      summary: Iniciar sesión
+      tags:
+        - Auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login correcto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Usuario inactivo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/auth/me:
+    get:
+      summary: Obtener el usuario de la sesión
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: Datos del usuario autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/auth/change-password:
+    put:
+      summary: Cambiar la contraseña del usuario autenticado
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Contraseña actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MensajeResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: Token inválido o contraseña actual incorrecta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/usuarios:
     get:
-      summary: Listar usuarios
+      summary: Listar usuarios (solo admin)
       tags:
         - Usuarios
       responses:
         "200":
-          description: Lista de usuarios obtenida correctamente
+          description: Lista de usuarios (sin contraseñas)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Usuario"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "500":
-          description: Error al obtener usuarios
+          $ref: "#/components/responses/ErrorInterno"
 
     post:
-      summary: Crear usuario
+      summary: Crear usuario con cualquier rol (solo admin)
       tags:
         - Usuarios
       requestBody:
@@ -33,88 +216,141 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UsuarioEntrada"
+              $ref: "#/components/schemas/UsuarioCreate"
       responses:
         "201":
-          description: Usuario creado correctamente
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsuarioResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "409":
+          description: El email ya está registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Error al crear usuario
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/usuarios/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
     get:
-      summary: Obtener usuario por ID
+      summary: Obtener usuario por ID (dueño o admin)
       tags:
         - Usuarios
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         "200":
           description: Usuario encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Usuario no encontrado
+          $ref: "#/components/responses/NoEncontrado"
         "500":
-          description: Error al obtener usuario
+          $ref: "#/components/responses/ErrorInterno"
 
     put:
-      summary: Actualizar usuario
+      summary: Actualizar usuario (dueño o admin)
+      description: >
+        El dueño puede editar sus datos personales. Solo un `admin` puede
+        cambiar `rol` o `estado`.
       tags:
         - Usuarios
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UsuarioEntrada"
+              $ref: "#/components/schemas/UsuarioUpdate"
       responses:
         "200":
-          description: Usuario actualizado correctamente
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsuarioResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Usuario no encontrado
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          description: El email ya está registrado por otro usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Error al actualizar usuario
+          $ref: "#/components/responses/ErrorInterno"
 
     delete:
-      summary: Eliminar usuario
+      summary: Eliminar usuario (solo admin)
+      description: Un administrador no puede eliminar su propia cuenta.
       tags:
         - Usuarios
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         "200":
-          description: Usuario eliminado correctamente
+          description: Usuario eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsuarioResponse"
+        "400":
+          description: Intento de eliminar la propia cuenta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Usuario no encontrado
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
         "500":
-          description: Error al eliminar usuario
-
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/proveedores:
     get:
       summary: Listar proveedores
       tags:
         - Proveedores
+      security: []
       responses:
         "200":
-          description: Lista de proveedores obtenida correctamente
+          description: Lista de proveedores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proveedor"
         "500":
-          description: Error al obtener proveedores
+          $ref: "#/components/responses/ErrorInterno"
 
     post:
-      summary: Crear proveedor
+      summary: Crear proveedor (admin o vendedor)
       tags:
         - Proveedores
       requestBody:
@@ -122,88 +358,131 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProveedorEntrada"
+              $ref: "#/components/schemas/ProveedorCreate"
       responses:
         "201":
-          description: Proveedor creado correctamente
+          description: Proveedor creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProveedorResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "409":
+          description: El email ya está registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Error al crear proveedor
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/proveedores/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
     get:
       summary: Obtener proveedor por ID
       tags:
         - Proveedores
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      security: []
       responses:
         "200":
           description: Proveedor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proveedor"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
-          description: Proveedor no encontrado
+          $ref: "#/components/responses/NoEncontrado"
         "500":
-          description: Error al obtener proveedor
+          $ref: "#/components/responses/ErrorInterno"
 
     put:
-      summary: Actualizar proveedor
+      summary: Actualizar proveedor (admin o vendedor)
+      description: Actualización parcial; los campos omitidos no cambian.
       tags:
         - Proveedores
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProveedorEntrada"
+              $ref: "#/components/schemas/ProveedorUpdate"
       responses:
         "200":
-          description: Proveedor actualizado correctamente
+          description: Proveedor actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proveedor"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Proveedor no encontrado
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          description: El email ya está registrado por otro proveedor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Error al actualizar proveedor
+          $ref: "#/components/responses/ErrorInterno"
 
     delete:
-      summary: Eliminar proveedor
+      summary: Eliminar proveedor (solo admin)
       tags:
         - Proveedores
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         "200":
-          description: Proveedor eliminado correctamente
+          description: Proveedor eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProveedorResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Proveedor no encontrado
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
         "500":
-          description: Error al eliminar proveedor
-
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/categorias:
     get:
       summary: Listar categorías
       tags:
         - Categorias
+      security: []
       responses:
         "200":
-          description: Lista de categorías obtenida correctamente
+          description: Lista de categorías
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Categoria"
         "500":
-          description: Error al obtener categorías
+          $ref: "#/components/responses/ErrorInterno"
 
     post:
-      summary: Crear categoría
+      summary: Crear categoría (admin o vendedor)
       tags:
         - Categorias
       requestBody:
@@ -211,88 +490,132 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CategoriaEntrada"
+              $ref: "#/components/schemas/CategoriaCreate"
       responses:
         "201":
-          description: Categoría creada correctamente
+          description: Categoría creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriaResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "409":
+          description: Ya existe una categoría con ese nombre
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Error al crear categoría
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/categorias/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
     get:
       summary: Obtener categoría por ID
       tags:
         - Categorias
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      security: []
       responses:
         "200":
           description: Categoría encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Categoria"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
-          description: Categoría no encontrada
+          $ref: "#/components/responses/NoEncontrado"
         "500":
-          description: Error al obtener categoría
+          $ref: "#/components/responses/ErrorInterno"
 
     put:
-      summary: Actualizar categoría
+      summary: Actualizar categoría (admin o vendedor)
+      description: Actualización parcial; los campos omitidos no cambian.
       tags:
         - Categorias
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CategoriaEntrada"
+              $ref: "#/components/schemas/CategoriaUpdate"
       responses:
         "200":
-          description: Categoría actualizada correctamente
+          description: Categoría actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriaResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Categoría no encontrada
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          description: Ya existe otra categoría con ese nombre
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Error al actualizar categoría
+          $ref: "#/components/responses/ErrorInterno"
 
     delete:
-      summary: Eliminar categoría
+      summary: Eliminar categoría (solo admin)
       tags:
         - Categorias
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         "200":
-          description: Categoría eliminada correctamente
+          description: Categoría eliminada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriaResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Categoría no encontrada
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
         "500":
-          description: Error al eliminar categoría
-
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/productos:
     get:
       summary: Listar productos
+      description: Incluye los nombres de la categoría y del proveedor.
       tags:
         - Productos
+      security: []
       responses:
         "200":
-          description: Lista de productos obtenida correctamente
+          description: Lista de productos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductoListado"
         "500":
-          description: Error al obtener productos
+          $ref: "#/components/responses/ErrorInterno"
 
     post:
-      summary: Crear producto
+      summary: Crear producto (admin o vendedor)
       tags:
         - Productos
       requestBody:
@@ -300,154 +623,1483 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProductoEntrada"
+              $ref: "#/components/schemas/ProductoCreate"
       responses:
         "201":
-          description: Producto creado correctamente
+          description: Producto creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Producto"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "409":
+          $ref: "#/components/responses/Conflicto"
         "500":
-          description: Error al crear producto
+          $ref: "#/components/responses/ErrorInterno"
 
   /api/productos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
     get:
       summary: Obtener producto por ID
       tags:
         - Productos
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      security: []
       responses:
         "200":
           description: Producto encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Producto"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
-          description: Producto no encontrado
+          $ref: "#/components/responses/NoEncontrado"
         "500":
-          description: Error al obtener producto
+          $ref: "#/components/responses/ErrorInterno"
 
     put:
-      summary: Actualizar producto
+      summary: Actualizar producto (admin o vendedor)
+      description: Actualización parcial; los campos omitidos no cambian.
       tags:
         - Productos
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProductoEntrada"
+              $ref: "#/components/schemas/ProductoUpdate"
       responses:
         "200":
-          description: Producto actualizado correctamente
+          description: Producto actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Producto"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Producto no encontrado
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
         "500":
-          description: Error al actualizar producto
+          $ref: "#/components/responses/ErrorInterno"
 
     delete:
-      summary: Eliminar producto
+      summary: Eliminar producto (solo admin)
       tags:
         - Productos
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         "200":
-          description: Producto eliminado correctamente
+          description: Producto eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
         "404":
-          description: Producto no encontrado
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
         "500":
-          description: Error al eliminar producto
+          $ref: "#/components/responses/ErrorInterno"
 
+  /api/direcciones:
+    get:
+      summary: Listar direcciones
+      description: >
+        Un `cliente` solo ve sus propias direcciones. Un `admin` ve todas y
+        puede filtrar con `id_usuario`.
+      tags:
+        - Direcciones
+      parameters:
+        - name: id_usuario
+          in: query
+          required: false
+          description: Solo admin. Filtra las direcciones de un usuario.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Lista de direcciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Direccion"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    post:
+      summary: Crear dirección
+      description: >
+        Crea una dirección para el usuario autenticado. Solo un `admin` puede
+        indicar `id_usuario` para crearla a nombre de otro usuario.
+      tags:
+        - Direcciones
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DireccionCreate"
+      responses:
+        "201":
+          description: Dirección creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DireccionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/direcciones/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Obtener dirección por ID (dueño o admin)
+      tags:
+        - Direcciones
+      responses:
+        "200":
+          description: Dirección encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Direccion"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    put:
+      summary: Actualizar dirección (dueño o admin)
+      description: Actualización parcial; los campos omitidos no cambian.
+      tags:
+        - Direcciones
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DireccionUpdate"
+      responses:
+        "200":
+          description: Dirección actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DireccionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    delete:
+      summary: Eliminar dirección (dueño o admin)
+      tags:
+        - Direcciones
+      responses:
+        "200":
+          description: Dirección eliminada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DireccionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/carritos:
+    get:
+      summary: Listar carritos
+      description: >
+        Un `cliente` solo ve sus carritos. Un `admin` ve todos y puede filtrar
+        por `id_usuario` y `estado`.
+      tags:
+        - Carritos
+      parameters:
+        - name: id_usuario
+          in: query
+          required: false
+          description: Solo admin. Filtra por usuario.
+          schema:
+            type: integer
+            minimum: 1
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [activo, convertido, abandonado]
+      responses:
+        "200":
+          description: Lista de carritos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Carrito"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    post:
+      summary: Obtener o crear el carrito activo
+      description: >
+        Devuelve el carrito activo del usuario y lo crea si no existe. Responde
+        `201` cuando el carrito se crea y `200` cuando ya existía.
+      tags:
+        - Carritos
+      responses:
+        "200":
+          description: Carrito activo existente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoActivoResponse"
+        "201":
+          description: Carrito activo creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoActivoResponse"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/carritos/activo:
+    get:
+      summary: Obtener el carrito activo con ítems y subtotal
+      tags:
+        - Carritos
+      responses:
+        "200":
+          description: Carrito activo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoConDetalles"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/carritos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Obtener carrito por ID con ítems
+      tags:
+        - Carritos
+      responses:
+        "200":
+          description: Carrito con sus ítems
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoConDetalles"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    put:
+      summary: Cambiar el estado del carrito
+      tags:
+        - Carritos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarritoUpdate"
+      responses:
+        "200":
+          description: Carrito actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    delete:
+      summary: Eliminar carrito e ítems
+      tags:
+        - Carritos
+      responses:
+        "200":
+          description: Carrito eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/carritos/{id}/items:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Listar ítems del carrito
+      tags:
+        - Carritos
+      responses:
+        "200":
+          description: Ítems con datos del producto y subtotal
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CarritoDetalle"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    post:
+      summary: Agregar ítem al carrito
+      description: >
+        Agrega un producto al carrito activo y valida stock. Si el producto ya
+        existe en el carrito, suma la cantidad.
+      tags:
+        - Carritos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarritoItemCreate"
+      responses:
+        "201":
+          description: Producto agregado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoItemResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/carritos/{id}/items/{idDetalle}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+      - name: idDetalle
+        in: path
+        required: true
+        description: Identificador del ítem del carrito.
+        schema:
+          type: integer
+          minimum: 1
+
+    put:
+      summary: Cambiar la cantidad de un ítem
+      tags:
+        - Carritos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarritoItemUpdate"
+      responses:
+        "200":
+          description: Cantidad actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoItemResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    delete:
+      summary: Quitar un ítem del carrito
+      tags:
+        - Carritos
+      responses:
+        "200":
+          description: Ítem eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarritoItemResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pedidos:
+    get:
+      summary: Listar pedidos
+      description: >
+        Un `cliente` solo ve sus pedidos. Un `admin` ve todos y puede filtrar
+        por `id_usuario` y `estado`.
+      tags:
+        - Pedidos
+      parameters:
+        - name: id_usuario
+          in: query
+          required: false
+          description: Solo admin. Filtra por usuario.
+          schema:
+            type: integer
+            minimum: 1
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pendiente, confirmado, enviado, entregado, cancelado]
+      responses:
+        "200":
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pedido"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    post:
+      summary: Crear un pedido desde el carrito activo
+      description: >
+        Crea el pedido a partir del carrito activo del usuario, descuenta stock
+        en una transacción y marca el carrito como `convertido`.
+      tags:
+        - Pedidos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PedidoCreate"
+      responses:
+        "201":
+          description: Pedido creado con proveedores y detalles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PedidoCreadoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pedidos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Obtener pedido con proveedores y detalles (dueño o admin)
+      tags:
+        - Pedidos
+      responses:
+        "200":
+          description: Pedido con sus pedidos de proveedor y detalles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PedidoConProveedores"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    put:
+      summary: Cambiar el estado del pedido (solo admin)
+      description: >
+        Al cancelar un pedido se restaura el stock y se cancelan sus pedidos de
+        proveedor. Un pedido cancelado no puede reactivarse.
+      tags:
+        - Pedidos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PedidoUpdate"
+      responses:
+        "200":
+          description: Estado del pedido actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PedidoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    delete:
+      summary: Eliminar pedido (solo admin)
+      description: >
+        Solo se eliminan pedidos `pendiente` o `cancelado` sin pagos registrados.
+      tags:
+        - Pedidos
+      responses:
+        "200":
+          description: Pedido eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PedidoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pedidos/{id}/proveedores:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Listar pedidos de proveedor de un pedido (dueño o admin)
+      tags:
+        - Pedidos
+      responses:
+        "200":
+          description: Pedidos de proveedor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PedidoProveedorResumen"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pedidos-proveedor/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Obtener un pedido de proveedor con detalles (dueño o admin)
+      tags:
+        - PedidosProveedor
+      responses:
+        "200":
+          description: Pedido de proveedor con detalles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PedidoProveedorDetallado"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    put:
+      summary: Cambiar el estado de un pedido de proveedor (solo admin)
+      tags:
+        - PedidosProveedor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PedidoProveedorUpdate"
+      responses:
+        "200":
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PedidoProveedorResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pedidos-proveedor/{id}/detalles:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Listar detalles de un pedido de proveedor (dueño o admin)
+      tags:
+        - PedidosProveedor
+      responses:
+        "200":
+          description: Detalles del pedido de proveedor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PedidoDetalle"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pedidos-proveedor/{id}/detalles/{idDetalle}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+      - name: idDetalle
+        in: path
+        required: true
+        description: Identificador del detalle del pedido.
+        schema:
+          type: integer
+          minimum: 1
+
+    get:
+      summary: Obtener un detalle de pedido (dueño o admin)
+      tags:
+        - PedidosProveedor
+      responses:
+        "200":
+          description: Detalle del pedido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PedidoDetalle"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pagos:
+    get:
+      summary: Listar pagos
+      description: >
+        Un `cliente` solo ve los pagos de sus pedidos. Un `admin` ve todos y
+        puede filtrar por `id_usuario` e `id_pedido`.
+      tags:
+        - Pagos
+      parameters:
+        - name: id_usuario
+          in: query
+          required: false
+          description: Solo admin. Filtra por usuario.
+          schema:
+            type: integer
+            minimum: 1
+        - name: id_pedido
+          in: query
+          required: false
+          description: Filtra por pedido.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pago"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    post:
+      summary: Registrar un pago
+      description: >
+        Registra un pago para un pedido propio (o cualquiera si es `admin`). El
+        monto no puede superar el saldo disponible; los pagos `pendiente`
+        reservan saldo para evitar sobrepagos. Solo un `admin` puede indicar
+        `estado`; para el resto se crea en `pendiente`.
+      tags:
+        - Pagos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PagoCreate"
+      responses:
+        "201":
+          description: Pago registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/pagos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      summary: Obtener pago por ID (dueño o admin)
+      tags:
+        - Pagos
+      responses:
+        "200":
+          description: Pago encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pago"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    put:
+      summary: Cambiar el estado del pago (solo admin)
+      tags:
+        - Pagos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PagoUpdate"
+      responses:
+        "200":
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+    delete:
+      summary: Eliminar pago (solo admin)
+      description: No se puede eliminar un pago con estado `completado`.
+      tags:
+        - Pagos
+      responses:
+        "200":
+          description: Pago eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/NoAutorizado"
+        "403":
+          $ref: "#/components/responses/Prohibido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
 
 components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token obtenido en /api/auth/login o /api/auth/register.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Identificador numérico del recurso.
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    ValidationError:
+      description: Datos inválidos
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorResponse"
+    NoAutorizado:
+      description: Token ausente, inválido o expirado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Prohibido:
+      description: El rol o el dueño del recurso no tiene permisos
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NoEncontrado:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflicto:
+      description: Conflicto con datos existentes o con registros asociados
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ErrorInterno:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
 
-    UsuarioEntrada:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Unauthorized
+        mensaje:
+          type: string
+          example: Token de autenticación requerido
+        detalle:
+          type: string
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - mensaje
+      properties:
+        mensaje:
+          type: string
+          example: Error de validación
+        errores:
+          type: array
+          items:
+            type: object
+            properties:
+              campo:
+                type: string
+                example: precio
+              mensaje:
+                type: string
+                example: El precio debe ser un número mayor o igual a 0
+              valor:
+                nullable: true
+                example: -1
+
+    MensajeResponse:
+      type: object
+      required:
+        - mensaje
+      properties:
+        mensaje:
+          type: string
+          example: Contraseña actualizada exitosamente
+
+    LoginInput:
       type: object
       required:
         - email
         - password
-        - rol
+      properties:
+        email:
+          type: string
+          format: email
+          example: cliente@example.com
+        password:
+          type: string
+          format: password
+          example: "Secreto123"
+
+    RegisterInput:
+      type: object
+      required:
+        - nombre
+        - apellido
+        - email
+        - password
       properties:
         nombre:
           type: string
+          minLength: 2
+          maxLength: 100
+          pattern: "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$"
+          example: Ana
+        apellido:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$"
+          example: Pérez
+        email:
+          type: string
+          format: email
+          maxLength: 150
+          example: ana@example.com
+        password:
+          type: string
+          format: password
+          minLength: 6
+          maxLength: 100
+          example: "Secreto123"
+        telefono:
+          type: string
+          maxLength: 30
+          example: "71234567"
+
+    ChangePasswordInput:
+      type: object
+      required:
+        - passwordActual
+        - passwordNueva
+      properties:
+        passwordActual:
+          type: string
+          format: password
+          example: "Secreto123"
+        passwordNueva:
+          type: string
+          format: password
+          minLength: 6
+          maxLength: 100
+          example: "NuevoSecreto456"
+
+    AuthResponse:
+      type: object
+      required:
+        - mensaje
+        - usuario
+        - token
+      properties:
+        mensaje:
+          type: string
+          example: Login exitoso
+        usuario:
+          $ref: "#/components/schemas/Usuario"
+        token:
+          type: string
+          description: JWT válido por 7 días.
+
+    Usuario:
+      type: object
+      required:
+        - id_usuario
+        - nombre
+        - apellido
+        - email
+        - rol
+        - estado
+        - fecha_registro
+      properties:
+        id_usuario:
+          type: integer
+          readOnly: true
+          example: 1
+        nombre:
+          type: string
+          example: Ana
+        apellido:
+          type: string
+          example: Pérez
+        email:
+          type: string
+          format: email
+          example: ana@example.com
+        telefono:
+          type: string
+          nullable: true
+          example: "71234567"
+        rol:
+          type: string
+          enum: [admin, vendedor, usuario, cliente]
+          example: cliente
+        estado:
+          type: string
+          enum: [activo, inactivo]
+          example: activo
+        fecha_registro:
+          type: string
+          format: date-time
+          readOnly: true
+
+    UsuarioCreate:
+      type: object
+      required:
+        - nombre
+        - apellido
+        - email
+        - password
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
           example: Carlos
         apellido:
           type: string
+          minLength: 2
+          maxLength: 100
           example: Mendoza
         email:
           type: string
           format: email
+          maxLength: 150
           example: carlos@gmail.com
         password:
           type: string
-          example: "123456"
+          format: password
+          minLength: 6
+          maxLength: 100
+          example: "Secreto123"
         telefono:
           type: string
+          maxLength: 30
           example: "71234567"
         rol:
           type: string
-          example: cliente
+          enum: [admin, vendedor, usuario, cliente]
+          default: cliente
+          example: vendedor
         estado:
           type: string
+          enum: [activo, inactivo]
+          default: activo
           example: activo
 
-    ProveedorEntrada:
+    UsuarioUpdate:
+      type: object
+      description: >
+        Todos los campos son opcionales. Solo un administrador puede enviar
+        `rol` o `estado`.
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Carlos
+        apellido:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Mendoza
+        email:
+          type: string
+          format: email
+          maxLength: 150
+          example: carlos@gmail.com
+        telefono:
+          type: string
+          maxLength: 30
+          example: "71234567"
+        rol:
+          type: string
+          enum: [admin, vendedor, usuario, cliente]
+          example: vendedor
+        estado:
+          type: string
+          enum: [activo, inactivo]
+          example: activo
+
+    UsuarioResponse:
       type: object
       required:
-        - nombre
+        - mensaje
+        - usuario
       properties:
+        mensaje:
+          type: string
+          example: Usuario creado exitosamente
+        usuario:
+          $ref: "#/components/schemas/Usuario"
+
+    Proveedor:
+      type: object
+      required:
+        - id_proveedor
+        - nombre
+        - estado
+        - fecha_registro
+      properties:
+        id_proveedor:
+          type: integer
+          readOnly: true
+          example: 1
         nombre:
           type: string
           example: Distribuidora Bolivia
         telefono:
           type: string
+          nullable: true
           example: "71234567"
         email:
           type: string
           format: email
+          nullable: true
           example: ventas@distribuidora.com
         direccion:
           type: string
+          nullable: true
+          example: Santa Cruz
+        estado:
+          type: string
+          example: activo
+        fecha_registro:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ProveedorCreate:
+      type: object
+      required:
+        - nombre
+        - email
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 150
+          example: Distribuidora Bolivia
+        email:
+          type: string
+          format: email
+          example: ventas@distribuidora.com
+        telefono:
+          type: string
+          minLength: 7
+          maxLength: 20
+          example: "71234567"
+        direccion:
+          type: string
+          maxLength: 255
           example: Santa Cruz
         estado:
           type: string
           example: activo
 
-    CategoriaEntrada:
+    ProveedorUpdate:
+      type: object
+      description: Todos los campos son opcionales.
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 150
+          example: Distribuidora Bolivia
+        email:
+          type: string
+          format: email
+          example: ventas@distribuidora.com
+        telefono:
+          type: string
+          minLength: 7
+          maxLength: 20
+          example: "71234567"
+        direccion:
+          type: string
+          maxLength: 255
+          example: Santa Cruz
+        estado:
+          type: string
+          example: activo
+
+    ProveedorResponse:
+      type: object
+      required:
+        - mensaje
+        - proveedor
+      properties:
+        mensaje:
+          type: string
+          example: Proveedor creado exitosamente
+        proveedor:
+          $ref: "#/components/schemas/Proveedor"
+
+    Categoria:
+      type: object
+      required:
+        - id_categoria
+        - nombre
+        - estado
+      properties:
+        id_categoria:
+          type: integer
+          readOnly: true
+          example: 1
+        nombre:
+          type: string
+          example: Tecnologia
+        descripcion:
+          type: string
+          nullable: true
+          example: Productos electronicos y tecnologicos
+        estado:
+          type: string
+          enum: [activo, inactivo]
+          example: activo
+
+    CategoriaCreate:
       type: object
       required:
         - nombre
       properties:
         nombre:
           type: string
+          minLength: 2
+          maxLength: 100
+          pattern: "^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\\s\\-_]+$"
           example: Tecnologia
         descripcion:
           type: string
+          maxLength: 500
           example: Productos electronicos y tecnologicos
         estado:
           type: string
+          enum: [activo, inactivo]
+          default: activo
           example: activo
 
-    ProductoEntrada:
+    CategoriaUpdate:
+      type: object
+      description: Todos los campos son opcionales.
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: "^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\\s\\-_]+$"
+          example: Tecnologia
+        descripcion:
+          type: string
+          maxLength: 500
+          example: Productos electronicos y tecnologicos
+        estado:
+          type: string
+          enum: [activo, inactivo]
+          example: activo
+
+    CategoriaResponse:
       type: object
       required:
+        - mensaje
+        - categoria
+      properties:
+        mensaje:
+          type: string
+          example: Categoría creada exitosamente
+        categoria:
+          $ref: "#/components/schemas/Categoria"
+
+    Producto:
+      type: object
+      required:
+        - id_producto
         - id_proveedor
         - id_categoria
         - nombre
         - precio
         - stock
+        - estado
+        - fecha_publicacion
       properties:
+        id_producto:
+          type: integer
+          readOnly: true
+          example: 1
         id_proveedor:
           type: integer
           example: 1
@@ -459,6 +2111,109 @@ components:
           example: Mouse Gamer
         descripcion:
           type: string
+          nullable: true
+          example: Mouse gamer RGB
+        precio:
+          type: string
+          description: >
+            PostgreSQL devuelve las columnas `NUMERIC` como cadena para
+            conservar la precisión; el valor es decimal.
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "150.00"
+        stock:
+          type: integer
+          minimum: 0
+          example: 20
+        imagen:
+          type: string
+          format: uri
+          nullable: true
+          example: https://example.com/mouse.jpg
+        estado:
+          type: string
+          enum: [disponible, agotado]
+          example: disponible
+        fecha_publicacion:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ProductoListado:
+      type: object
+      description: Producto con los nombres de proveedor y categoría (JOIN).
+      required:
+        - id_producto
+        - proveedor
+        - categoria
+        - nombre
+        - precio
+        - stock
+        - estado
+        - fecha_publicacion
+      properties:
+        id_producto:
+          type: integer
+          readOnly: true
+          example: 1
+        proveedor:
+          type: string
+          example: Yucra Cell
+        categoria:
+          type: string
+          example: Tecnologia
+        nombre:
+          type: string
+          example: Celulares
+        descripcion:
+          type: string
+          nullable: true
+          example: buen producto
+        precio:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "99.99"
+        stock:
+          type: integer
+          minimum: 0
+          example: 10
+        imagen:
+          type: string
+          nullable: true
+          example: https://example.com/celular.jpg
+        estado:
+          type: string
+          enum: [disponible, agotado]
+          example: disponible
+        fecha_publicacion:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ProductoCreate:
+      type: object
+      required:
+        - id_proveedor
+        - id_categoria
+        - nombre
+        - precio
+        - stock
+      properties:
+        id_proveedor:
+          type: integer
+          minimum: 1
+          example: 1
+        id_categoria:
+          type: integer
+          minimum: 1
+          example: 1
+        nombre:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: Mouse Gamer
+        descripcion:
+          type: string
+          maxLength: 500
           example: Mouse gamer RGB
         precio:
           type: number
@@ -471,7 +2226,698 @@ components:
           example: 20
         imagen:
           type: string
-          example: mouse.jpg
+          format: uri
+          maxLength: 255
+          example: https://example.com/mouse.jpg
         estado:
           type: string
+          enum: [disponible, agotado]
+          example: disponible
+
+    ProductoUpdate:
+      type: object
+      description: Todos los campos son opcionales.
+      properties:
+        id_proveedor:
+          type: integer
+          minimum: 1
+          example: 1
+        id_categoria:
+          type: integer
+          minimum: 1
+          example: 1
+        nombre:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: Mouse Gamer
+        descripcion:
+          type: string
+          maxLength: 500
+          example: Mouse gamer RGB
+        precio:
+          type: number
+          format: double
+          minimum: 0
+          example: 150.00
+        stock:
+          type: integer
+          minimum: 0
+          example: 20
+        imagen:
+          type: string
+          format: uri
+          maxLength: 255
+          example: https://example.com/mouse.jpg
+        estado:
+          type: string
+          enum: [disponible, agotado]
+          example: disponible
+
+    ProductoResponse:
+      type: object
+      required:
+        - mensaje
+        - producto
+      properties:
+        mensaje:
+          type: string
+          example: Producto eliminado correctamente
+        producto:
+          $ref: "#/components/schemas/Producto"
+
+    Direccion:
+      type: object
+      required:
+        - id_direccion
+        - id_usuario
+        - direccion
+      properties:
+        id_direccion:
+          type: integer
+          readOnly: true
+          example: 1
+        id_usuario:
+          type: integer
+          readOnly: true
+          example: 3
+        departamento:
+          type: string
+          nullable: true
+          example: La Paz
+        ciudad:
+          type: string
+          nullable: true
+          example: El Alto
+        zona:
+          type: string
+          nullable: true
+          example: Villa Adela
+        direccion:
+          type: string
+          example: Av. 6 de marzo #123
+        referencia:
+          type: string
+          nullable: true
+          example: Frente a la plaza
+        telefono:
+          type: string
+          nullable: true
+          example: "71234567"
+
+    DireccionCreate:
+      type: object
+      required:
+        - direccion
+      properties:
+        id_usuario:
+          type: integer
+          minimum: 1
+          description: Solo admin. Crea la dirección a nombre de otro usuario.
+          example: 3
+        departamento:
+          type: string
+          maxLength: 100
+          example: La Paz
+        ciudad:
+          type: string
+          maxLength: 100
+          example: El Alto
+        zona:
+          type: string
+          maxLength: 100
+          example: Villa Adela
+        direccion:
+          type: string
+          minLength: 3
+          maxLength: 255
+          example: Av. 6 de marzo #123
+        referencia:
+          type: string
+          maxLength: 255
+          example: Frente a la plaza
+        telefono:
+          type: string
+          maxLength: 30
+          example: "71234567"
+
+    DireccionUpdate:
+      type: object
+      description: Todos los campos son opcionales.
+      properties:
+        departamento:
+          type: string
+          maxLength: 100
+          example: La Paz
+        ciudad:
+          type: string
+          maxLength: 100
+          example: El Alto
+        zona:
+          type: string
+          maxLength: 100
+          example: Villa Adela
+        direccion:
+          type: string
+          minLength: 3
+          maxLength: 255
+          example: Av. 6 de marzo #123
+        referencia:
+          type: string
+          maxLength: 255
+          example: Frente a la plaza
+        telefono:
+          type: string
+          maxLength: 30
+          example: "71234567"
+
+    DireccionResponse:
+      type: object
+      required:
+        - mensaje
+        - direccion
+      properties:
+        mensaje:
+          type: string
+          example: Dirección creada exitosamente
+        direccion:
+          $ref: "#/components/schemas/Direccion"
+
+    Carrito:
+      type: object
+      required:
+        - id_carrito
+        - id_usuario
+        - fecha_creacion
+        - estado
+      properties:
+        id_carrito:
+          type: integer
+          readOnly: true
+          example: 1
+        id_usuario:
+          type: integer
+          readOnly: true
+          example: 3
+        fecha_creacion:
+          type: string
+          format: date-time
+          readOnly: true
+        estado:
+          type: string
+          enum: [activo, convertido, abandonado]
           example: activo
+
+    CarritoDetalle:
+      type: object
+      description: Ítem del carrito con datos del producto y subtotal calculado.
+      required:
+        - id_detalle
+        - id_carrito
+        - id_producto
+        - nombre
+        - precio
+        - stock
+        - estado_producto
+        - cantidad
+        - subtotal
+      properties:
+        id_detalle:
+          type: integer
+          readOnly: true
+          example: 1
+        id_carrito:
+          type: integer
+          example: 1
+        id_producto:
+          type: integer
+          example: 5
+        nombre:
+          type: string
+          example: Mouse Gamer
+        imagen:
+          type: string
+          nullable: true
+          example: https://example.com/mouse.jpg
+        precio:
+          type: string
+          description: NUMERIC devuelto como cadena para conservar la precisión.
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "150.00"
+        stock:
+          type: integer
+          minimum: 0
+          example: 20
+        estado_producto:
+          type: string
+          enum: [disponible, agotado]
+          example: disponible
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 2
+        subtotal:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "300.00"
+
+    CarritoConDetalles:
+      allOf:
+        - $ref: "#/components/schemas/Carrito"
+        - type: object
+          required:
+            - detalles
+            - subtotal
+          properties:
+            detalles:
+              type: array
+              items:
+                $ref: "#/components/schemas/CarritoDetalle"
+            subtotal:
+              type: string
+              description: Suma de los subtotales de los ítems.
+              pattern: "^\\d+(\\.\\d+)?$"
+              example: "300.00"
+
+    CarritoResponse:
+      type: object
+      required:
+        - mensaje
+        - carrito
+      properties:
+        mensaje:
+          type: string
+          example: Carrito actualizado exitosamente
+        carrito:
+          $ref: "#/components/schemas/Carrito"
+
+    CarritoActivoResponse:
+      type: object
+      required:
+        - mensaje
+        - carrito
+        - creado
+      properties:
+        mensaje:
+          type: string
+          example: Carrito activo obtenido correctamente
+        carrito:
+          $ref: "#/components/schemas/CarritoConDetalles"
+        creado:
+          type: boolean
+          description: "`true` si el carrito se creó en esta petición."
+          example: false
+
+    CarritoUpdate:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          type: string
+          enum: [activo, convertido, abandonado]
+          example: convertido
+
+    CarritoItem:
+      type: object
+      required:
+        - id_detalle
+        - id_carrito
+        - id_producto
+        - cantidad
+      properties:
+        id_detalle:
+          type: integer
+          readOnly: true
+          example: 1
+        id_carrito:
+          type: integer
+          example: 1
+        id_producto:
+          type: integer
+          example: 5
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 2
+
+    CarritoItemCreate:
+      type: object
+      required:
+        - id_producto
+        - cantidad
+      properties:
+        id_producto:
+          type: integer
+          minimum: 1
+          example: 5
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 2
+
+    CarritoItemUpdate:
+      type: object
+      required:
+        - cantidad
+      properties:
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 3
+
+    CarritoItemResponse:
+      type: object
+      required:
+        - mensaje
+        - detalle
+      properties:
+        mensaje:
+          type: string
+          example: Producto agregado al carrito
+        detalle:
+          $ref: "#/components/schemas/CarritoItem"
+
+    Pedido:
+      type: object
+      required:
+        - id_pedido
+        - id_usuario
+        - id_direccion
+        - fecha_pedido
+        - estado
+        - total
+      properties:
+        id_pedido:
+          type: integer
+          readOnly: true
+          example: 1
+        id_usuario:
+          type: integer
+          readOnly: true
+          example: 3
+        id_direccion:
+          type: integer
+          example: 2
+        fecha_pedido:
+          type: string
+          format: date-time
+          readOnly: true
+        estado:
+          type: string
+          enum: [pendiente, confirmado, enviado, entregado, cancelado]
+          example: pendiente
+        subtotal_productos:
+          type: string
+          nullable: true
+          description: NUMERIC devuelto como cadena para conservar la precisión.
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "300.00"
+        costo_envio:
+          type: string
+          nullable: true
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "10.00"
+        descuento:
+          type: string
+          nullable: true
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "0.00"
+        total:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "310.00"
+
+    PedidoDetalle:
+      type: object
+      description: Detalle de un pedido de proveedor con datos del producto.
+      required:
+        - id_detalle
+        - id_pedido_proveedor
+        - id_producto
+        - producto
+        - cantidad
+        - precio_unitario
+        - subtotal
+      properties:
+        id_detalle:
+          type: integer
+          readOnly: true
+          example: 1
+        id_pedido_proveedor:
+          type: integer
+          example: 1
+        id_producto:
+          type: integer
+          example: 5
+        producto:
+          type: string
+          example: Mouse Gamer
+        imagen:
+          type: string
+          nullable: true
+          example: https://example.com/mouse.jpg
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 2
+        precio_unitario:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "150.00"
+        subtotal:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "300.00"
+
+    PedidoProveedorResumen:
+      type: object
+      required:
+        - id_pedido_proveedor
+        - id_pedido
+        - id_proveedor
+        - proveedor
+        - subtotal
+        - estado
+      properties:
+        id_pedido_proveedor:
+          type: integer
+          readOnly: true
+          example: 1
+        id_pedido:
+          type: integer
+          example: 1
+        id_proveedor:
+          type: integer
+          example: 2
+        proveedor:
+          type: string
+          example: Yucra Cell
+        subtotal:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "300.00"
+        estado:
+          type: string
+          enum: [pendiente, confirmado, enviado, entregado, cancelado]
+          example: pendiente
+
+    PedidoProveedorConDetalles:
+      allOf:
+        - $ref: "#/components/schemas/PedidoProveedorResumen"
+        - type: object
+          required:
+            - detalles
+          properties:
+            detalles:
+              type: array
+              items:
+                $ref: "#/components/schemas/PedidoDetalle"
+
+    PedidoProveedorDetallado:
+      allOf:
+        - $ref: "#/components/schemas/PedidoProveedorResumen"
+        - type: object
+          required:
+            - id_usuario
+            - detalles
+          properties:
+            id_usuario:
+              type: integer
+              description: Dueño del pedido, incluido en la respuesta actual.
+              example: 3
+            detalles:
+              type: array
+              items:
+                $ref: "#/components/schemas/PedidoDetalle"
+
+    PedidoConProveedores:
+      allOf:
+        - $ref: "#/components/schemas/Pedido"
+        - type: object
+          required:
+            - proveedores
+          properties:
+            proveedores:
+              type: array
+              items:
+                $ref: "#/components/schemas/PedidoProveedorConDetalles"
+
+    PedidoCreate:
+      type: object
+      required:
+        - id_direccion
+      properties:
+        id_direccion:
+          type: integer
+          minimum: 1
+          example: 2
+        costo_envio:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+          example: 10
+        descuento:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+          example: 0
+
+    PedidoUpdate:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          type: string
+          enum: [pendiente, confirmado, enviado, entregado, cancelado]
+          example: confirmado
+
+    PedidoResponse:
+      type: object
+      required:
+        - mensaje
+        - pedido
+      properties:
+        mensaje:
+          type: string
+          example: Estado del pedido actualizado
+        pedido:
+          $ref: "#/components/schemas/Pedido"
+
+    PedidoCreadoResponse:
+      type: object
+      required:
+        - mensaje
+        - pedido
+      properties:
+        mensaje:
+          type: string
+          example: Pedido creado exitosamente
+        pedido:
+          $ref: "#/components/schemas/PedidoConProveedores"
+
+    PedidoProveedorUpdate:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          type: string
+          enum: [pendiente, confirmado, enviado, entregado, cancelado]
+          example: enviado
+
+    PedidoProveedorResponse:
+      type: object
+      required:
+        - mensaje
+        - pedido_proveedor
+      properties:
+        mensaje:
+          type: string
+          example: Estado del pedido de proveedor actualizado
+        pedido_proveedor:
+          $ref: "#/components/schemas/PedidoProveedorResumen"
+
+    Pago:
+      type: object
+      required:
+        - id_pago
+        - id_pedido
+        - monto
+        - estado
+      properties:
+        id_pago:
+          type: integer
+          readOnly: true
+          example: 1
+        id_pedido:
+          type: integer
+          example: 1
+        metodo_pago:
+          type: string
+          nullable: true
+          example: tarjeta
+        monto:
+          type: string
+          description: NUMERIC devuelto como cadena para conservar la precisión.
+          pattern: "^\\d+(\\.\\d+)?$"
+          example: "310.00"
+        estado:
+          type: string
+          enum: [pendiente, completado, rechazado, reembolsado]
+          example: pendiente
+        fecha_pago:
+          type: string
+          format: date-time
+          readOnly: true
+
+    PagoCreate:
+      type: object
+      required:
+        - id_pedido
+        - metodo_pago
+      properties:
+        id_pedido:
+          type: integer
+          minimum: 1
+          example: 1
+        metodo_pago:
+          type: string
+          maxLength: 50
+          example: tarjeta
+        monto:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Si se omite, se usa el saldo pendiente del pedido.
+          example: 310
+        estado:
+          type: string
+          description: Solo un admin puede indicarlo; para el resto es `pendiente`.
+          enum: [pendiente, completado, rechazado, reembolsado]
+          example: completado
+
+    PagoUpdate:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          type: string
+          enum: [pendiente, completado, rechazado, reembolsado]
+          example: completado
+
+    PagoResponse:
+      type: object
+      required:
+        - mensaje
+        - pago
+      properties:
+        mensaje:
+          type: string
+          example: Pago registrado exitosamente
+        pago:
+          $ref: "#/components/schemas/Pago"

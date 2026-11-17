@@ -36,11 +36,11 @@ class ProveedorRepository extends BaseRepository {
         const { nombre, telefono, email, direccion, estado } = datos;
         const filas = await this.query(
             `UPDATE proveedor
-             SET nombre = $1,
-                 telefono = $2,
-                 email = $3,
-                 direccion = $4,
-                 estado = $5
+             SET nombre = COALESCE($1, nombre),
+                 telefono = COALESCE($2, telefono),
+                 email = COALESCE($3, email),
+                 direccion = COALESCE($4, direccion),
+                 estado = COALESCE($5, estado)
              WHERE id_proveedor = $6
              RETURNING *`,
             [nombre, telefono, email, direccion, estado, id]

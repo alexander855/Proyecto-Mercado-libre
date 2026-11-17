@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/Agregarcategoria.css";
+import { API_URL, authHeaders } from "../src/api";
 
 
 function Editarproveedor() {
@@ -25,7 +26,7 @@ function Editarproveedor() {
 
       try {
 
-        const respuesta = await fetch(`http://localhost:3000/api/proveedores/${id}`);
+        const respuesta = await fetch(`${API_URL}/api/proveedores/${id}`);
 
         const datos = await respuesta.json();
 
@@ -81,14 +82,10 @@ function Editarproveedor() {
     try {
 
       const respuesta = await fetch(
-        `http://localhost:3000/api/proveedores/${id}`,
+        `${API_URL}/api/proveedores/${id}`,
         {
           method: "PUT",
-
-          headers: {
-            "Content-Type": "application/json"
-          },
-
+          headers: authHeaders(),
           body: JSON.stringify(formulario)
         }
       );

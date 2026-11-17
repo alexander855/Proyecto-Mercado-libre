@@ -1,8 +1,8 @@
 import { useState } from "react";
 import "../css/Agregarcategoria.css";
 import { useNavigate } from "react-router-dom";
-import { Pencil, Trash2 } from 'lucide-react';
 import toast from "react-hot-toast";
+import { API_URL, authHeaders } from "../src/api";
 
 function Agregarcategoria() {
 
@@ -28,12 +28,10 @@ function Agregarcategoria() {
 
     try {
       const respuesta = await fetch(
-        "http://localhost:3000/api/categorias",
+        `${API_URL}/api/categorias`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: authHeaders(),
           body: JSON.stringify(formulario)
         }
       );

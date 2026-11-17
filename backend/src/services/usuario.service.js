@@ -3,6 +3,7 @@
 // Toma al "solicitante" (req.user) como dato, no a Express ni a la BD.
 
 const { AppError } = require('../errors/AppError');
+const bcrypt = require('bcryptjs');
 
 class UsuarioService {
     constructor({ usuarioRepository }) {
@@ -11,6 +12,26 @@ class UsuarioService {
 
     async listar() {
         return this.usuarioRepository.findAll();
+    }
+
+    async crear({ nombre, apellido, email, password, telefono, rol, estado }) {
+        if (await this.usuarioRepository.existeEmail(email)) {
+            throw AppError.conflicto('Este email ya está registrado');
+        }
+
+        const passwordHasheada = await bcrypt.hash(password, 10);
+
+        const usuario = await this.usuarioRepository.create({
+            nombre,
+            apellido,
+            email,
+            password: passwordHasheada,
+            telefono: telefono || null,
+            rol: rol || 'cliente',
+            estado: estado || 'activo'
+        });
+
+        return { mensaje: 'Usuario creado exitosamente', usuario };
     }
 
     async obtenerPorId(id, solicitante) {

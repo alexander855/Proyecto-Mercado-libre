@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/Agregarcategoria.css";
 import toast from "react-hot-toast";
+import { API_URL, authHeaders } from "../src/api";
 
 function Agregarproducto() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ function Agregarproducto() {
   const [categorias, setCategorias] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [errores, setErrores] = useState({});
 
   
   useEffect(() => {
@@ -30,14 +32,14 @@ function Agregarproducto() {
       try {
         // cargar proveedores
         const respuestaProveedores = await fetch(
-          "http://localhost:3000/api/proveedores"
+          `${API_URL}/api/proveedores`
         );
         const datosProveedores = await respuestaProveedores.json();
         setProveedores(datosProveedores);
 
         // cargar categorías
         const respuestaCategorias = await fetch(
-          "http://localhost:3000/api/categorias"
+          `${API_URL}/api/categorias`
         );
         const datosCategorias = await respuestaCategorias.json();
         setCategorias(datosCategorias);
@@ -59,6 +61,9 @@ function Agregarproducto() {
       ...formulario,
       [name]: value
     });
+    if (errores[name]) {
+      setErrores({ ...errores, [name]: "" });
+    }
   };
 
   const guardarProducto = async (e) => {
@@ -71,22 +76,18 @@ function Agregarproducto() {
         return;
       }
 
-       console.log("📤 Enviando datos:", formulario);  
+      setErrores({});
+
       const respuesta = await fetch(
-        "http://localhost:3000/api/productos",
+        `${API_URL}/api/productos`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: authHeaders(),
           body: JSON.stringify(formulario)
         }
       );
 
       const datos = await respuesta.json();
-
-       console.log("📥 Respuesta del servidor:", datos);
-       console.log("📥 Status:", respuesta.status);
 
       if (!respuesta.ok) {
         if (datos.errores) {
@@ -94,18 +95,19 @@ function Agregarproducto() {
           datos.errores.forEach(err => {
             erroresMap[err.campo] = err.mensaje;
           });
-          setError(erroresMap);
+          setErrores(erroresMap);
+          toast.error("Corrige los campos marcados");
           return;
         }
         throw new Error(datos.mensaje || "Error al crear producto");
       }
 
-      toast.success(" Producto agregado correctamente");
+      toast.success("Producto agregado correctamente");
       navigate("/Productos");
 
     } catch (error) {
       console.error("Error:", error);
-      toast.error(`❌ Error al crear el producto: ${error.message}`);
+      toast.error(`Error al crear el producto: ${error.message}`);
     }
   };
 
@@ -233,7 +235,7 @@ function Agregarproducto() {
             name="imagen"
             value={formulario.imagen}
             onChange={manejarCambio}
-            placeholder="Ej: laptop.jpg"
+            placeholder="https://ejemplo.com/laptop.jpg"
           />
         </div>
 
@@ -249,6 +251,16 @@ function Agregarproducto() {
             <option value="agotado">agotado</option>
           </select>
         </div>
+
+        {Object.values(errores).some(Boolean) && (
+          <div className="mensaje-error">
+            {Object.entries(errores)
+              .filter(([, mensaje]) => mensaje)
+              .map(([campo, mensaje]) => (
+                <p key={campo}>{mensaje}</p>
+              ))}
+          </div>
+        )}
 
         <button type="submit">Guardar producto</button>
       </form>

@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import agregarcategoria from "../../tablas/Agregarcategoria";
-import { BrowserRouter, Routes, Route, NavLink, useNavigate, } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Pencil, Trash2 } from 'lucide-react';
+import { API_URL, tieneRol } from "../api";
 
 function Categorias() {
   const navegacion = useNavigate();
+  const puedeEditar = tieneRol("admin", "vendedor");
+  const puedeEliminar = tieneRol("admin");
 
   const [categorias, setCategorias] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/categorias")
+    fetch(`${API_URL}/api/categorias`)
       .then((respuesta) => respuesta.json())
       .then((datos) => {
         setCategorias(datos);
@@ -28,13 +30,15 @@ function Categorias() {
         </div>
       </header>
       <section className="panel">
-        <button
-          className="boton-agregar"
-          onClick={() => navegacion(`/tablas/agregarcategoria`)}
-        >
-          {" "}
-          Agregar nueva categoria +{" "}
-        </button>
+        {puedeEditar && (
+          <button
+            className="boton-agregar"
+            onClick={() => navegacion(`/tablas/agregarcategoria`)}
+          >
+            {" "}
+            Agregar nueva categoria +{" "}
+          </button>
+        )}
         <h2>Lista de categorías</h2>
         <table>
           <thead>
@@ -59,21 +63,27 @@ function Categorias() {
 
                 <td>
                   <div className="flex gap-4">
-                    {/* Icono de Editar */}
-                    <button
-                      onClick={() => navegacion(`/tablas/Editarcategoria/${categoria.id_categoria}`)}
-                      className="boton-editar"
-                    >
-                      <Pencil size={20} />
-                    </button>
+                    {puedeEditar && (
+                      <button
+                        onClick={() => navegacion(`/tablas/Editarcategoria/${categoria.id_categoria}`)}
+                        className="boton-editar"
+                        title="Editar categoría"
+                      >
+                        <Pencil size={20} />
+                      </button>
+                    )}
 
-                    {/* Icono de Eliminar */}
-                    <button
-                      onClick={() => navegacion(`/tablas/Eliminarcategoria/${categoria.id_categoria}`)}
-                      className="boton-eliminar"
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                    {puedeEliminar && (
+                      <button
+                        onClick={() => navegacion(`/tablas/Eliminarcategoria/${categoria.id_categoria}`)}
+                        className="boton-eliminar"
+                        title="Eliminar categoría"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    )}
+
+                    {!puedeEditar && !puedeEliminar && "—"}
                   </div>
                 </td>
               </tr>

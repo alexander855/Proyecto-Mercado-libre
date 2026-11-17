@@ -1,37 +1,30 @@
+import { Navigate } from "react-router-dom";
 
-import { Navigate, useLocation } from "react-router-dom";
-
-function ProtectedRoute({ children, rolesPermitidos }) {
-  const location = useLocation();
+function leerSesion() {
   const token = localStorage.getItem("token");
+  if (!token) return null;
 
- 
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
- 
-  let usuario;
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     const ahora = Math.floor(Date.now() / 1000);
 
-    if (payload.exp <= ahora) {
-      // Token expirado → limpiar y redirigir
-      localStorage.removeItem("token");
-      localStorage.removeItem("usuario");
-      return <Navigate to="/login" replace />;
-    }
+    if (payload.exp <= ahora) return null;
 
-    usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    return JSON.parse(localStorage.getItem("usuario") || "{}");
   } catch {
-    // Token malformado → limpiar y redirigir
+    return null;
+  }
+}
+
+function ProtectedRoute({ children, rolesPermitidos }) {
+  const usuario = leerSesion();
+
+  if (!usuario) {
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
     return <Navigate to="/login" replace />;
   }
 
-  
   if (rolesPermitidos && !rolesPermitidos.includes(usuario.rol)) {
     return (
       <div style={{
@@ -62,7 +55,6 @@ function ProtectedRoute({ children, rolesPermitidos }) {
     );
   }
 
-  
   return children;
 }
 

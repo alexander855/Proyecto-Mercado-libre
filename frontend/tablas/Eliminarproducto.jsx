@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "../css/EliminarCategoria.css"
+import "../css/Eliminarcategoria.css";
+import { API_URL, authHeaders } from "../src/api";
 
 function Eliminarproducto() {
   const { id } = useParams();
@@ -10,7 +11,7 @@ function Eliminarproducto() {
 
   useEffect(() => {
     // Obtener datos del producto
-    fetch(`http://localhost:3000/api/productos/${id}`)
+    fetch(`${API_URL}/api/productos/${id}`)
       .then((res) => res.json())
       .then((data) => {
         setProducto(data);
@@ -24,15 +25,16 @@ function Eliminarproducto() {
 
   const eliminarProducto = async () => {
     try {
-      const respuesta = await fetch(`http://localhost:3000/api/productos/${id}`, {
-        method: "DELETE"
+      const respuesta = await fetch(`${API_URL}/api/productos/${id}`, {
+        method: "DELETE",
+        headers: authHeaders()
       });
 
       if (!respuesta.ok) {
         throw new Error("Error al eliminar");
       }
 
-      alert("Proveedor eliminado correctamente");
+      alert("Producto eliminado correctamente");
       navigate("/Productos");
 
     } catch (error) {
@@ -46,7 +48,7 @@ function Eliminarproducto() {
 
   return (
     <div className="eliminar-categoria">
-      <h1>Eliminar proveedor</h1>
+      <h1>Eliminar producto</h1>
       <p>¿Estás seguro de eliminar el producto <strong>"{producto.nombre}"</strong>?</p>
       <p className="advertencia">Esta acción no se puede deshacer.</p>
       

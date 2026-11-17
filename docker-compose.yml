@@ -12,6 +12,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Carga el esquema solo cuando el volumen de datos está vacío.
+      - "./Mercado libre.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro"
     networks:
       - mercado-network
     command: postgres -c timezone=America/La_Paz
@@ -40,7 +42,15 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    env_file:
+      # Opcional: si backend/.env no existe, se usan los valores por defecto.
+      - path: ./backend/.env
+        required: false
     environment:
+      # JWT_SECRET del shell tiene prioridad; si no, se usa este valor SOLO para desarrollo.
+      # En producción define JWT_SECRET en el entorno real.
+      JWT_SECRET: ${JWT_SECRET:-dev-only-cambia-este-secreto-antes-de-produccion}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres

@@ -7,6 +7,7 @@ import PanelLayout from "./layouts/PanelLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import { Toaster } from "react-hot-toast";
 
 
@@ -32,6 +33,8 @@ import Eliminarproveedor from "../tablas/Eliminarproveedor";
 import Agregarproducto from "../tablas/Agregarproducto";
 import Editarproducto from "../tablas/Editarproducto";
 import Eliminarproducto from "../tablas/Eliminarproducto";
+import Agregarusuario from "../tablas/Agregarusuario";
+import Editarusuario from "../tablas/Editarusuario";
 
 function App() {
   return (
@@ -77,6 +80,15 @@ function App() {
           }
         />
 
+        <Route
+          path="/register"
+          element={
+            localStorage.getItem("token")
+              ? <Navigate to="/" replace />
+              : <Register />
+          }
+        />
+
         
         <Route
           element={
@@ -97,24 +109,103 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/tablas/agregarusuario"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin"]}>
+                <Agregarusuario />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tablas/editarusuario/:id"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin"]}>
+                <Editarusuario />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Proveedores */}
           <Route path="/proveedores" element={<Proveedores />} />
-          <Route path="/tablas/agregarproveedor" element={<Agregarproveedor />} />
-          <Route path="/tablas/editarproveedor/:id" element={<Editarproveedor />} />
-          <Route path="/tablas/eliminarproveedor/:id" element={<Eliminarproveedor />} />
+          <Route
+            path="/tablas/agregarproveedor"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "vendedor"]}>
+                <Agregarproveedor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tablas/editarproveedor/:id"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "vendedor"]}>
+                <Editarproveedor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tablas/eliminarproveedor/:id"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin"]}>
+                <Eliminarproveedor />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Categorías */}
           <Route path="/categorias" element={<Categorias />} />
-          <Route path="/tablas/agregarcategoria" element={<Agregarcategoria />} />
-          <Route path="/tablas/editarcategoria/:id" element={<Editarcategoria />} />
-          <Route path="/tablas/eliminarcategoria/:id" element={<Eliminarcategoria />} />
+          <Route
+            path="/tablas/agregarcategoria"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "vendedor"]}>
+                <Agregarcategoria />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tablas/editarcategoria/:id"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "vendedor"]}>
+                <Editarcategoria />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tablas/eliminarcategoria/:id"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin"]}>
+                <Eliminarcategoria />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Productos */}
           <Route path="/productos" element={<Productos />} />
-          <Route path="/tablas/agregarproducto" element={<Agregarproducto />} />
-          <Route path="/tablas/editarproducto/:id" element={<Editarproducto />} />
-          <Route path="/tablas/eliminarproducto/:id" element={<Eliminarproducto />} />
+          <Route
+            path="/tablas/agregarproducto"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "vendedor"]}>
+                <Agregarproducto />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tablas/editarproducto/:id"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin", "vendedor"]}>
+                <Editarproducto />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tablas/eliminarproducto/:id"
+            element={
+              <ProtectedRoute rolesPermitidos={["admin"]}>
+                <Eliminarproducto />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Direcciones */}
           <Route path="/direcciones" element={<Direcciones />} />

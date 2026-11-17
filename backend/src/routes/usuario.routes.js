@@ -16,6 +16,17 @@ function crearUsuarioRoutes({ usuarioService }) {
         res.json(await usuarioService.listar());
     });
 
+    // POST - Crear usuario con cualquier rol (solo admin)
+    router.post(
+        '/',
+        authorizeRole('admin'),
+        usuarioValidators.create,
+        validar,
+        async (req, res) => {
+            res.status(201).json(await usuarioService.crear(req.body));
+        }
+    );
+
     // GET - Obtener un usuario por ID
     router.get('/:id', usuarioValidators.id, validar, async (req, res) => {
         res.json(await usuarioService.obtenerPorId(req.params.id, req.user));

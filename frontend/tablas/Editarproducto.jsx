@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/Agregarcategoria.css";
+import { API_URL, authHeaders } from "../src/api";
 
 function EditarProducto() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ function EditarProducto() {
     precio: "",
     stock: "",
     imagen: "",
-    estado: "disponoble"
+    estado: "disponible"
   });
 
   // Estados para los selects y carga
@@ -30,9 +31,9 @@ function EditarProducto() {
       try {
         // Cargar proveedores y categorías en paralelo
         const [proveedoresRes, categoriasRes, productoRes] = await Promise.all([
-          fetch("http://localhost:3000/api/proveedores"),
-          fetch("http://localhost:3000/api/categorias"),
-          fetch(`http://localhost:3000/api/productos/${id}`) // Obtener producto específico
+          fetch(`${API_URL}/api/proveedores`),
+          fetch(`${API_URL}/api/categorias`),
+          fetch(`${API_URL}/api/productos/${id}`)
         ]);
 
         const proveedoresData = await proveedoresRes.json();
@@ -84,12 +85,10 @@ function EditarProducto() {
       }
 
       const respuesta = await fetch(
-        `http://localhost:3000/api/productos/${id}`,
+        `${API_URL}/api/productos/${id}`,
         {
-          method: "PUT", // ← Método PUT para actualizar
-          headers: {
-            "Content-Type": "application/json"
-          },
+          method: "PUT",
+          headers: authHeaders(),
           body: JSON.stringify(formulario)
         }
       );

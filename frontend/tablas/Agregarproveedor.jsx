@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/Agregarcategoria.css";
 import toast from "react-hot-toast";
+import { API_URL, authHeaders } from "../src/api";
 
 function Agregarproveedor() {
 
@@ -29,12 +30,10 @@ function Agregarproveedor() {
 
     try {
       const respuesta = await fetch(
-        "http://localhost:3000/api/proveedores",
+        `${API_URL}/api/proveedores`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: authHeaders(),
           body: JSON.stringify(formulario)
         }
       );

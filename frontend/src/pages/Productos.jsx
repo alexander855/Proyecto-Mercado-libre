@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, NavLink, useNavigate, } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Pencil, Trash2 } from 'lucide-react';
+import { API_URL, tieneRol } from "../api";
 
 function Productos() {
   const navegacion = useNavigate();
+  const puedeEditar = tieneRol("admin", "vendedor");
+  const puedeEliminar = tieneRol("admin");
 
   const [productos, setproductos] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/productos")
+    fetch(`${API_URL}/api/productos`)
       .then((respuesta) => respuesta.json())
       .then((datos) => {
         setproductos(datos);
@@ -20,13 +23,12 @@ function Productos() {
 
   
   const formaatearhora = (fecha) => {
-    return new Date (fecha).toLocaleDateString('es-Es' , {
+    return new Date(fecha).toLocaleString('es-ES', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC'
+      minute: '2-digit'
     });
   };
   return (
@@ -38,13 +40,15 @@ function Productos() {
         </div>
       </header>
       <section className="panel">
-        <button
-          className="boton-agregar"
-          onClick={() => navegacion(`/tablas/agregarproducto`)}
-        >
-          {" "}
-          Agregar nuevo Producto +{" "}
-        </button>
+        {puedeEditar && (
+          <button
+            className="boton-agregar"
+            onClick={() => navegacion(`/tablas/agregarproducto`)}
+          >
+            {" "}
+            Agregar nuevo Producto +{" "}
+          </button>
+        )}
         <h2>Lista de productos</h2>
         <table>
           <thead>
@@ -77,21 +81,27 @@ function Productos() {
 
                 <td>
                   <div className="flex gap-4">
-                    {/* Icono de Editar */}
-                    <button
-                      onClick={() => navegacion(`/tablas/Editarproducto/${Producto.id_producto}`)}
-                      className="boton-editar"
-                    >
-                      <Pencil size={20} />
-                    </button>
+                    {puedeEditar && (
+                      <button
+                        onClick={() => navegacion(`/tablas/Editarproducto/${Producto.id_producto}`)}
+                        className="boton-editar"
+                        title="Editar producto"
+                      >
+                        <Pencil size={20} />
+                      </button>
+                    )}
 
-                    {/* Icono de Eliminar */}
-                    <button
-                      onClick={() => navegacion(`/tablas/Eliminarproducto/${Producto.id_producto}`)}
-                      className="boton-eliminar"
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                    {puedeEliminar && (
+                      <button
+                        onClick={() => navegacion(`/tablas/Eliminarproducto/${Producto.id_producto}`)}
+                        className="boton-eliminar"
+                        title="Eliminar producto"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    )}
+
+                    {!puedeEditar && !puedeEliminar && "—"}
                   </div>
                 </td>
               </tr>

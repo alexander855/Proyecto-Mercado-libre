@@ -52,7 +52,7 @@ const productoValidators = {
     body('precio').optional().isFloat({ min: 0 }).withMessage('El precio debe ser un número mayor o igual a 0').toFloat(),
     body('stock').optional().isInt({ min: 0 }).withMessage('El stock debe ser un número entero mayor o igual a 0').toInt(),
     body('imagen').optional().trim().isURL().withMessage('La imagen debe ser una URL válida').isLength({ max: 255 }).withMessage('La URL de la imagen no puede exceder los 255 caracteres'),
-    body('estado').optional().trim().isIn(['activo', 'inactivo', 'disponible', 'agotado']).withMessage('Estado inválido')
+    body('estado').optional({ values: 'falsy' }).trim().isIn(['disponible', 'agotado']).withMessage('Estado inválido')
   ],
 
   id: [
@@ -64,7 +64,7 @@ const productoValidators = {
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('El límite debe ser entre 1 y 100'),
     query('categoria').optional().isInt({ min: 1 }).withMessage('ID de categoría inválido'),
     query('proveedor').optional().isInt({ min: 1 }).withMessage('ID de proveedor inválido'),
-    query('estado').optional().isIn(['activo', 'inactivo', 'disponible', 'agotado']).withMessage('Estado inválido')
+    query('estado').optional().isIn(['disponible', 'agotado']).withMessage('Estado inválido')
   ]
 };
 
@@ -104,14 +104,147 @@ const categoriaValidators = {
   ]
 };
 
+const direccionValidators = {
+    create: [
+        body('id_usuario').optional().isInt({ min: 1 }).withMessage('ID de usuario inválido'),
+        body('departamento').optional({ values: 'falsy' }).trim().isLength({ max: 100 }).withMessage('El departamento no puede exceder los 100 caracteres'),
+        body('ciudad').optional({ values: 'falsy' }).trim().isLength({ max: 100 }).withMessage('La ciudad no puede exceder los 100 caracteres'),
+        body('zona').optional({ values: 'falsy' }).trim().isLength({ max: 100 }).withMessage('La zona no puede exceder los 100 caracteres'),
+        body('direccion').trim().notEmpty().withMessage('La dirección es requerida').isLength({ min: 3, max: 255 }).withMessage('La dirección debe tener entre 3 y 255 caracteres'),
+        body('referencia').optional({ values: 'falsy' }).trim().isLength({ max: 255 }).withMessage('La referencia no puede exceder los 255 caracteres'),
+        body('telefono').optional({ values: 'falsy' }).trim().isLength({ max: 30 }).withMessage('El teléfono no puede exceder los 30 caracteres').matches(/^[0-9+\-\s()]+$/).withMessage('El teléfono contiene caracteres inválidos')
+    ],
+
+    update: [
+        param('id').isInt({ min: 1 }).withMessage('ID de dirección inválido'),
+        body('departamento').optional({ values: 'falsy' }).trim().isLength({ max: 100 }).withMessage('El departamento no puede exceder los 100 caracteres'),
+        body('ciudad').optional({ values: 'falsy' }).trim().isLength({ max: 100 }).withMessage('La ciudad no puede exceder los 100 caracteres'),
+        body('zona').optional({ values: 'falsy' }).trim().isLength({ max: 100 }).withMessage('La zona no puede exceder los 100 caracteres'),
+        body('direccion').optional({ values: 'falsy' }).trim().isLength({ min: 3, max: 255 }).withMessage('La dirección debe tener entre 3 y 255 caracteres'),
+        body('referencia').optional({ values: 'falsy' }).trim().isLength({ max: 255 }).withMessage('La referencia no puede exceder los 255 caracteres'),
+        body('telefono').optional({ values: 'falsy' }).trim().isLength({ max: 30 }).withMessage('El teléfono no puede exceder los 30 caracteres').matches(/^[0-9+\-\s()]+$/).withMessage('El teléfono contiene caracteres inválidos')
+    ],
+
+    id: [
+        param('id').isInt({ min: 1 }).withMessage('ID de dirección inválido')
+    ],
+
+    list: [
+        query('id_usuario').optional().isInt({ min: 1 }).withMessage('ID de usuario inválido')
+    ]
+};
+
+const carritoValidators = {
+    list: [
+        query('id_usuario').optional().isInt({ min: 1 }).withMessage('ID de usuario inválido'),
+        query('estado').optional().isIn(['activo', 'convertido', 'abandonado']).withMessage('Estado de carrito inválido')
+    ],
+
+    update: [
+        param('id').isInt({ min: 1 }).withMessage('ID de carrito inválido'),
+        body('estado').trim().notEmpty().withMessage('El estado es requerido').isIn(['activo', 'convertido', 'abandonado']).withMessage('Estado de carrito inválido')
+    ],
+
+    id: [
+        param('id').isInt({ min: 1 }).withMessage('ID de carrito inválido')
+    ],
+
+    itemCreate: [
+        param('id').isInt({ min: 1 }).withMessage('ID de carrito inválido'),
+        body('id_producto').isInt({ min: 1 }).withMessage('El producto debe ser un número entero positivo').toInt(),
+        body('cantidad').isInt({ min: 1 }).withMessage('La cantidad debe ser un número entero mayor o igual a 1').toInt()
+    ],
+
+    itemUpdate: [
+        param('id').isInt({ min: 1 }).withMessage('ID de carrito inválido'),
+        param('idDetalle').isInt({ min: 1 }).withMessage('ID de ítem inválido'),
+        body('cantidad').isInt({ min: 1 }).withMessage('La cantidad debe ser un número entero mayor o igual a 1').toInt()
+    ],
+
+    itemIds: [
+        param('id').isInt({ min: 1 }).withMessage('ID de carrito inválido'),
+        param('idDetalle').isInt({ min: 1 }).withMessage('ID de ítem inválido')
+    ]
+};
+
+const pedidoValidators = {
+    create: [
+        body('id_direccion').isInt({ min: 1 }).withMessage('La dirección debe ser un número entero positivo').toInt(),
+        body('costo_envio').optional().isFloat({ min: 0 }).withMessage('El costo de envío debe ser mayor o igual a 0').toFloat(),
+        body('descuento').optional().isFloat({ min: 0 }).withMessage('El descuento debe ser mayor o igual a 0').toFloat()
+    ],
+
+    update: [
+        param('id').isInt({ min: 1 }).withMessage('ID de pedido inválido'),
+        body('estado').trim().notEmpty().withMessage('El estado es requerido').isIn(['pendiente', 'confirmado', 'enviado', 'entregado', 'cancelado']).withMessage('Estado de pedido inválido')
+    ],
+
+    id: [
+        param('id').isInt({ min: 1 }).withMessage('ID de pedido inválido')
+    ],
+
+    list: [
+        query('id_usuario').optional().isInt({ min: 1 }).withMessage('ID de usuario inválido'),
+        query('estado').optional().isIn(['pendiente', 'confirmado', 'enviado', 'entregado', 'cancelado']).withMessage('Estado de pedido inválido')
+    ]
+};
+
+const pedidoProveedorValidators = {
+    id: [
+        param('id').isInt({ min: 1 }).withMessage('ID de pedido de proveedor inválido')
+    ],
+
+    update: [
+        param('id').isInt({ min: 1 }).withMessage('ID de pedido de proveedor inválido'),
+        body('estado').trim().notEmpty().withMessage('El estado es requerido').isIn(['pendiente', 'confirmado', 'enviado', 'entregado', 'cancelado']).withMessage('Estado de pedido inválido')
+    ],
+
+    detalle: [
+        param('id').isInt({ min: 1 }).withMessage('ID de pedido de proveedor inválido'),
+        param('idDetalle').isInt({ min: 1 }).withMessage('ID de detalle inválido')
+    ]
+};
+
+const pagoValidators = {
+    create: [
+        body('id_pedido').isInt({ min: 1 }).withMessage('El pedido debe ser un número entero positivo').toInt(),
+        body('metodo_pago').trim().notEmpty().withMessage('El método de pago es requerido').isLength({ max: 50 }).withMessage('El método de pago no puede exceder los 50 caracteres'),
+        body('monto').optional().isFloat({ min: 0.01 }).withMessage('El monto debe ser mayor a 0').toFloat(),
+        body('estado').optional().isIn(['pendiente', 'completado', 'rechazado', 'reembolsado']).withMessage('Estado de pago inválido')
+    ],
+
+    update: [
+        param('id').isInt({ min: 1 }).withMessage('ID de pago inválido'),
+        body('estado').trim().notEmpty().withMessage('El estado es requerido').isIn(['pendiente', 'completado', 'rechazado', 'reembolsado']).withMessage('Estado de pago inválido')
+    ],
+
+    id: [
+        param('id').isInt({ min: 1 }).withMessage('ID de pago inválido')
+    ],
+
+    list: [
+        query('id_usuario').optional().isInt({ min: 1 }).withMessage('ID de usuario inválido'),
+        query('id_pedido').optional().isInt({ min: 1 }).withMessage('ID de pedido inválido')
+    ]
+};
+
 const usuarioValidators = {
     register: [
         body('nombre').trim().notEmpty().withMessage('El nombre es requerido').isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres').matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/).withMessage('El nombre solo puede contener letras'),
         body('apellido').trim().notEmpty().withMessage('El apellido es requerido').isLength({ min: 2, max: 100 }).withMessage('El apellido debe tener entre 2 y 100 caracteres').matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/).withMessage('El apellido solo puede contener letras'),
         body('email').trim().notEmpty().withMessage('El email es requerido').isEmail().withMessage('Email inválido').normalizeEmail().isLength({ max: 150 }).withMessage('El email no puede exceder los 150 caracteres'),
         body('password').notEmpty().withMessage('La contraseña es requerida').isLength({ min: 6, max: 100 }).withMessage('La contraseña debe tener entre 6 y 100 caracteres'),
+        body('telefono').optional({ values: 'falsy' }).trim().isLength({ max: 30 }).withMessage('El teléfono no puede exceder los 30 caracteres').matches(/^[0-9+\-\s()]+$/).withMessage('El teléfono contiene caracteres inválidos')
+    ],
+
+    create: [
+        body('nombre').trim().notEmpty().withMessage('El nombre es requerido').isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres').matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/).withMessage('El nombre solo puede contener letras'),
+        body('apellido').trim().notEmpty().withMessage('El apellido es requerido').isLength({ min: 2, max: 100 }).withMessage('El apellido debe tener entre 2 y 100 caracteres').matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/).withMessage('El apellido solo puede contener letras'),
+        body('email').trim().notEmpty().withMessage('El email es requerido').isEmail().withMessage('Email inválido').normalizeEmail().isLength({ max: 150 }).withMessage('El email no puede exceder los 150 caracteres'),
+        body('password').notEmpty().withMessage('La contraseña es requerida').isLength({ min: 6, max: 100 }).withMessage('La contraseña debe tener entre 6 y 100 caracteres'),
         body('telefono').optional({ values: 'falsy' }).trim().isLength({ max: 30 }).withMessage('El teléfono no puede exceder los 30 caracteres').matches(/^[0-9+\-\s()]+$/).withMessage('El teléfono contiene caracteres inválidos'),
-        body('rol').optional({ values: 'falsy' }).trim().toLowerCase().isIn(['admin', 'vendedor', 'usuario', 'cliente']).withMessage('Rol inválido')
+        body('rol').optional({ values: 'falsy' }).trim().toLowerCase().isIn(['admin', 'vendedor', 'usuario', 'cliente']).withMessage('Rol inválido'),
+        body('estado').optional({ values: 'falsy' }).trim().toLowerCase().isIn(['activo', 'inactivo']).withMessage('Estado inválido')
     ],
 
     login: [
@@ -144,6 +277,11 @@ module.exports = {
   proveedorValidators, 
   productoValidators, 
   emailValidators,
-  categoriaValidators,
-  usuarioValidators 
+    categoriaValidators,
+    direccionValidators,
+    carritoValidators,
+    pedidoValidators,
+    pedidoProveedorValidators,
+    pagoValidators,
+    usuarioValidators 
 };

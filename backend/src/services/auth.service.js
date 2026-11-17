@@ -11,7 +11,7 @@ class AuthService {
         this.generarToken = generarToken;
     }
 
-    async registrar({ nombre, apellido, email, password, telefono, rol }) {
+    async registrar({ nombre, apellido, email, password, telefono }) {
         const existe = await this.usuarioRepository.existeEmail(email);
         if (existe) {
             throw AppError.conflicto('Este email ya está registrado');
@@ -19,13 +19,15 @@ class AuthService {
 
         const passwordHasheada = await bcrypt.hash(password, 10);
 
+        // El registro público siempre crea clientes. Un admin se asigna
+        // únicamente desde POST /api/usuarios con un token de administrador.
         const usuario = await this.usuarioRepository.create({
             nombre,
             apellido,
             email,
             password: passwordHasheada,
             telefono: telefono || null,
-            rol: rol || 'cliente'
+            rol: 'cliente'
         });
 
         return { usuario, token: this.generarToken(usuario) };

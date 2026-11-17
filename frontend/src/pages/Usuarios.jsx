@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil, Trash2, UserPlus, Shield, User } from "lucide-react";
+import { Pencil, Trash2, UserPlus, Shield, User, Users, Store } from "lucide-react";
+import { API_URL, authHeaders } from "../api";
 
 function Usuarios() {
   const navegacion = useNavigate();
@@ -14,13 +15,8 @@ function Usuarios() {
   useEffect(() => {
     const obtenerUsuarios = async () => {
       try {
-        const token = localStorage.getItem("token");
-
-        const respuesta = await fetch("http://localhost:3000/api/usuarios", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+        const respuesta = await fetch(`${API_URL}/api/usuarios`, {
+          headers: authHeaders(),
         });
 
         const datos = await respuesta.json();
@@ -47,14 +43,9 @@ function Usuarios() {
     }
 
     try {
-      const token = localStorage.getItem("token");
-
-      const respuesta = await fetch(`http://localhost:3000/api/usuarios/${id}`, {
+      const respuesta = await fetch(`${API_URL}/api/usuarios/${id}`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(),
       });
 
       const datos = await respuesta.json();
@@ -136,26 +127,34 @@ function Usuarios() {
       </header>
 
       {/*  Tarjetas de estadísticas */}
-      <div className="estadisticas">
-        <div className="tarjeta-estadistica">
-          <h3>Total</h3>
-          <p>{contarPorRol("todos")}</p>
+      <div className="tarjetas">
+        <div className="tarjeta">
+          <h3>
+            <Users size={16} /> Total
+          </h3>
+          <p className="numero">{contarPorRol("todos")}</p>
+          <span>usuarios registrados</span>
         </div>
-        <div className="tarjeta-estadistica">
+        <div className="tarjeta">
           <h3>
             <Shield size={16} /> Admins
           </h3>
-          <p>{contarPorRol("admin")}</p>
+          <p className="numero">{contarPorRol("admin")}</p>
+          <span>con acceso total</span>
         </div>
-        <div className="tarjeta-estadistica">
-          <h3>Vendedores</h3>
-          <p>{contarPorRol("vendedor")}</p>
+        <div className="tarjeta">
+          <h3>
+            <Store size={16} /> Vendedores
+          </h3>
+          <p className="numero">{contarPorRol("vendedor")}</p>
+          <span>gestionan productos</span>
         </div>
-        <div className="tarjeta-estadistica">
+        <div className="tarjeta">
           <h3>
             <User size={16} /> Clientes
           </h3>
-          <p>{contarPorRol("cliente")}</p>
+          <p className="numero">{contarPorRol("cliente")}</p>
+          <span>cuentas de compra</span>
         </div>
       </div>
 
@@ -246,7 +245,7 @@ function Usuarios() {
                       <button
                         onClick={() =>
                           navegacion(
-                            `/tablas/Editarusuario/${usuario.id_usuario}`
+                            `/tablas/editarusuario/${usuario.id_usuario}`
                           )
                         }
                         className="boton-editar"

@@ -9,4 +9,8 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
+pool.on('error', (err) => {
+  console.error('Error inesperado en el pool de PostgreSQL:', err);
+});
+
 module.exports = pool;

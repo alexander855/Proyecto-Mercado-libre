@@ -1,10 +1,10 @@
 // src/layouts/PanelLayout.jsx
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import "../App.css";
+import { getUsuarioSesion } from "../api";
 
 function PanelLayout() {
-  const navigate = useNavigate();
-  const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+  const usuario = getUsuarioSesion();
 
   const cerrarSesion = () => {
     if (window.confirm("¿Cerrar sesión?")) {
@@ -28,9 +28,11 @@ function PanelLayout() {
           <NavLink to="/" end className={({ isActive }) => (isActive ? "activo" : "")}>
             Inicio
           </NavLink>
-          <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "activo" : "")}>
-            Usuarios
-          </NavLink>
+          {usuario.rol === "admin" && (
+            <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "activo" : "")}>
+              Usuarios
+            </NavLink>
+          )}
           <NavLink to="/proveedores" className={({ isActive }) => (isActive ? "activo" : "")}>
             Proveedores
           </NavLink>
@@ -62,7 +64,7 @@ function PanelLayout() {
           fontSize: "14px"
         }}>
 
-          <div style={{ marginTop: "240px" }}> 
+          <div style={{ marginTop: "0" }}> 
           <p style={{ margin: "0 0 10px 0" }}>
             👤 {usuario.nombre} {usuario.apellido}
           </p>
